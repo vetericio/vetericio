@@ -98,7 +98,7 @@ test("22 consulta fonte com JWT e enriquece apenas vínculos de receitas selecio
     clinica_id: "clinica",
     animal_id: "pet",
     tutor_id: "tutor",
-    drive_arquivo_id: "pdf",
+    drive_arquivo_id: "receita",
     emitida_em: "2026-01-05",
     numero: null,
     titulo: "Receita",
@@ -121,6 +121,9 @@ test("22 consulta fonte com JWT e enriquece apenas vínculos de receitas selecio
   const consultas = bancoFicticio(t, {
     oricse_portal_receitas: [
       r,
+      { ...r, id: "mismatch", drive_arquivo_id: "receita" },
+      { ...r, id: "outro-animal", drive_arquivo_id: "outro-animal" },
+      { ...r, id: "outra-categoria", drive_arquivo_id: "outra-categoria" },
       { ...r, id: "outra", clinica_id: "outra", animal_id: "pet-outro", resumo: "Não enviar" },
       {
         ...r,
@@ -138,19 +141,29 @@ test("22 consulta fonte com JWT e enriquece apenas vínculos de receitas selecio
     tutores: [{ id: "tutor", clinica_id: "clinica", nome: "Tutor autorizado" }],
     drive_arquivos: [
       {
-        id: "pdf",
+        id: "receita",
         clinica_id: "outra",
         entidade_tipo: "animal",
         mime_type: "application/pdf",
         entidade_id: "pet",
+        categoria: "receitas",
+        enviado_por: "perfil-outra-clinica",
       },
       {
-        id: "pdf",
+        id: "receita",
         clinica_id: "clinica",
         entidade_tipo: "animal",
         mime_type: "application/pdf",
         entidade_id: "pet",
+        categoria: "receitas",
+        enviado_por: "perfil-emissor",
       },
+      { id: "outro-animal", clinica_id: "clinica", entidade_tipo: "animal", mime_type: "application/pdf", entidade_id: "outro", categoria: "receitas", enviado_por: "perfil-animal-incorreto" },
+      { id: "outra-categoria", clinica_id: "clinica", entidade_tipo: "animal", mime_type: "application/pdf", entidade_id: "pet", categoria: "documentos", enviado_por: "perfil-categoria-incorreta" },
+    ],
+    oricse_pessoas: [
+      { user_id: "perfil-emissor", nome_completo: "Veterinário emissor", crmv: "123", crmv_uf: "mg" },
+      { user_id: "perfil-outra-clinica", nome_completo: "Não mostrar", crmv: "999", crmv_uf: "MG" },
     ],
     oricse_animal_registros_extra: [
       consulta,
@@ -160,13 +173,24 @@ test("22 consulta fonte com JWT e enriquece apenas vínculos de receitas selecio
     clinicas: [{ id: "clinica", nome: "Clínica autorizada" }],
   });
   const relatorio = await gerarRelatorioDocumentos({ ...entrada, codigo: "22" });
-  assert.equal(relatorio.tabelas[0].linhas.length, 1);
-  assert.equal(relatorio.tabelas[0].linhas[0][5], "Pet autorizado");
-  assert.equal(relatorio.tabelas[0].linhas[0][13], "08/02/2031");
-  assert.deepEqual(relatorio.tabelas[0].pdfReceitas, [{ linha: 0, documentoId: "receita" }]);
-  assert.doesNotMatch(JSON.stringify(relatorio), /Pet alheio|Não enviar|"pdf"/);
+  assert.equal(relatorio.tabelas[0].linhas.length, 4);
+  const [mismatch, outraCategoria, outroAnimal, emitida] = relatorio.tabelas[0].linhas;
+  assert.equal(emitida[5], "Pet autorizado");
+  assert.deepEqual(emitida.slice(7, 9), ["Veterinário emissor", "CRMV-MG 123"]);
+  for (const linha of [mismatch, outraCategoria, outroAnimal])
+    assert.deepEqual(linha.slice(7, 9), ["Não identificado", "—"]);
+  assert.equal(emitida[12], "08/02/2026");
+  assert.ok(relatorio.tabelas[0].linhas.every((r) => r[13] === "05/01/2031"));
+  assert.ok(relatorio.tabelas[0].pdfReceitas.some(({ documentoId }) => documentoId === "receita"));
+  assert.doesNotMatch(JSON.stringify(relatorio), /Pet alheio|Não enviar|Não mostrar|perfil-emissor/);
   assert.equal(consultas[0].principal, "jwt-ficticio");
-  for (const { principal, tabela, operacoes } of consultas.slice(1)) {
+  const consultasPerfil = consultas.filter((r) => r.tabela === "oricse_pessoas");
+  assert.equal(consultasPerfil.length, 1);
+  assert.deepEqual(consultasPerfil[0].operacoes, [
+    ["select", "user_id,nome_completo,crmv,crmv_uf"],
+    ["in", "user_id", ["perfil-emissor"]],
+  ]);
+  for (const { principal, tabela, operacoes } of consultas.slice(1).filter((r) => r.tabela !== "oricse_pessoas")) {
     assert.equal(principal, "servico");
     assert.ok(
       operacoes.some(

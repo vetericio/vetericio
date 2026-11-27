@@ -36,16 +36,19 @@ export type MovimentoRelatorio = {
   registrado_em: string;
 };
 
-export function guardaProntuarioEstimada(ultimaConsulta: string | null, emissao: string) {
-  // A data da receita por si só não identifica um atendimento. Não usar fallback.
-  if (!ultimaConsulta || ultimaConsulta < emissao) return null;
-  const [ano, mes, dia] = ultimaConsulta.split("-").map(Number);
-  // Se 29/02 não existe no quinto ano, mantém a referência no dia seguinte (01/03).
-  return new Date(Date.UTC(ano + 5, mes - 1, dia)).toISOString().slice(0, 10);
+export function referenciaGuardaReceita(emissao: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(emissao)) return null;
+  const original = new Date(emissao + "T00:00:00Z");
+  if (Number.isNaN(original.getTime()) || original.toISOString().slice(0, 10) !== emissao)
+    return null;
+  // Em anos sem 29/02, usar 01/03 para não antecipar a referência.
+  original.setUTCFullYear(original.getUTCFullYear() + 5);
+  return original.toISOString().slice(0, 10);
 }
 
 export function montarRelatorioReceitas({
   receitas,
+  autores = new Map(),
   animais,
   tutores,
   consultas,
@@ -53,6 +56,7 @@ export function montarRelatorioReceitas({
   clinica,
 }: {
   receitas: ReceitaRelatorio[];
+  autores?: ReadonlyMap<string, { nome: string; crmv: string }>;
   animais: ReadonlyMap<string, string>;
   tutores: ReadonlyMap<string, string>;
   consultas: ReadonlyMap<string, string>;
@@ -64,7 +68,10 @@ export function montarRelatorioReceitas({
   let especiais = 0;
   const linhas = receitas.map((r, linha) => {
     const ultima = consultas.get(r.animal_id) ?? null;
-    const guarda = guardaProntuarioEstimada(ultima, r.emitida_em);
+    const guarda = referenciaGuardaReceita(r.emitida_em);
+    const nomeSalvo = r.prescritor_nome?.trim();
+    const crmvSalvo = r.prescritor_crmv?.trim();
+    const perfil = nomeSalvo && crmvSalvo ? undefined : autores.get(r.id);
     if (guarda) comReferencia++;
     const temPdf = r.drive_arquivo_id !== null && pdfs.get(r.drive_arquivo_id) === r.animal_id;
     if (temPdf) pdfReceitas.push({ linha, documentoId: r.id });
@@ -83,13 +90,13 @@ export function montarRelatorioReceitas({
       r.resumo || "—",
       animais.get(r.animal_id) || "Não identificado",
       tutores.get(r.tutor_id) || "Não identificado",
-      r.prescritor_nome || "Não registrado",
-      r.prescritor_crmv || "—",
+      perfil?.nome || nomeSalvo || "Não identificado",
+      perfil?.crmv || crmvSalvo || "—",
       clinica,
       r.visivel_tutor ? "Prontuário e Portal do Tutor" : "Prontuário interno",
       temPdf ? "PDF vinculado" : "Sem PDF vinculado",
       dataBR(ultima),
-      guarda ? dataBR(guarda) : "Sem data de referência suficiente",
+      guarda ? dataBR(guarda) : "Sem data de emissão",
     ];
   });
   const tabela: TabelaRelatorio & { pdfReceitas: typeof pdfReceitas } = {
@@ -108,7 +115,7 @@ export function montarRelatorioReceitas({
       "Onde consta",
       "Arquivo",
       "Última consulta registrada",
-      "Referência estimada de guarda do prontuário",
+      "Guarda da receita (emissão + 5 anos)",
     ],
     linhas,
     pdfReceitas,
@@ -118,12 +125,12 @@ export function montarRelatorioReceitas({
       { rotulo: "Receitas emitidas", valor: receitas.length },
       { rotulo: "Tipo registrado: controle especial", valor: especiais },
       { rotulo: "Com PDF vinculado", valor: pdfReceitas.length },
-      { rotulo: "Sem data de referência suficiente", valor: receitas.length - comReferencia },
+      { rotulo: "Sem data de emissão", valor: receitas.length - comReferencia },
     ],
     notas: [
-      "O mínimo de 5 anos após o último atendimento é do prontuário (Resolução CFMV 1.321/2020, art. 9º, § 3º). A data aqui é estimada pela última consulta registrada no sistema, inclusive fora do período pesquisado. Um novo atendimento pode alterar a referência.",
-      "A estimativa não determina o prazo específico de cada via de receita, não autoriza descarte e não atesta conformidade ou assinatura digital. Um vínculo de PDF não comprova assinatura nem substitui vias exigidas.",
-      "Prescritor e CRMV aparecem quando registrados na emissão. Registros históricos sem esses dados não são atribuídos por suposição. Receitas excluídas da ficha pelo RT não aparecem nesta listagem.",
+      "A referência interna de guarda da receita é de 5 anos a partir da emissão. Não é o prazo de guarda do prontuário e não muda com uma nova consulta.",
+      "A referência não determina o prazo legal de cada via, não autoriza descarte e não atesta assinatura digital.",
+      "O relatório preserva o nome e o CRMV registrados na emissão. Para receitas antigas sem esses dados, mostra o cadastro atual do emissor identificado pelo PDF original. Sem vínculo confirmado, não atribui autoria. Receitas excluídas pelo RT não aparecem.",
     ],
     tabelas: [tabela],
   };
