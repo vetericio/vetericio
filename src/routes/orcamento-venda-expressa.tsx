@@ -13,6 +13,8 @@ import { salvarOrcamentoRelatorio } from "@/lib/orcamentos-relatorio.functions";
 import { PrecoPorPesoOrcamento } from "@/components/PrecoPorPesoOrcamento";
 import { calcularPrecoOrcamento, type PerfilOrcamento } from "@/lib/preco-orcamento";
 import { faixasValidas, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
+import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
+import { obterTemaDocumentoPremium, urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao } from "@/lib/modelos-documentos";
 
 export const Route = createFileRoute("/orcamento-venda-expressa")({ component: OrcamentoVendaExpressa });
 
@@ -38,6 +40,11 @@ function OrcamentoVendaExpressa() {
   const [animalId, setAnimalId] = useState("");
   const [tutorId, setTutorId] = useState("");
   const [logoClinica, setLogoClinica] = useState<HTMLImageElement | null>(null);
+  const [fundoClinica, setFundoClinica] = useState<HTMLImageElement | null>(null);
+  const [identidadeDocumento, setIdentidadeDocumento] = useState<IdentidadeDocumento | null>(null);
+  const [modeloDocumentoOrcamento, setModeloDocumentoOrcamento] = useState<ModeloDocumentoPadrao>({
+    fundo: "", texto: "", usarLogo: true, corQuadros: "#a6c4d9",
+  });
   const [nomeTutor, setNomeTutor] = useState("");
   const [contatoTutor, setContatoTutor] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -97,6 +104,10 @@ function OrcamentoVendaExpressa() {
     // Um orçamento em edição pertence à clínica que forneceu seus dados.
     setCatalogoClinicaId("");
     setClinica({});
+    setLogoClinica(null);
+    setFundoClinica(null);
+    setIdentidadeDocumento(null);
+    setModeloDocumentoOrcamento({ fundo: "", texto: "", usarLogo: true, corQuadros: "#a6c4d9" });
     setProdutos([]);
     setTutores([]);
     setAnimais([]);
@@ -117,11 +128,28 @@ function OrcamentoVendaExpressa() {
       supabaseBanco.from("oricse_catalogo_itens").select("id,nome,valor,tipo,faixas_peso").eq("clinica_id", clinicaId).eq("ativo", true).order("nome"),
       (supabaseBanco as any).from("tutores").select("id,nome,telefone,email").eq("clinica_id", clinicaId).order("nome").limit(1000),
       (supabaseBanco as any).from("oricse_animais").select("id,nome,tutor_id,especie,sexo,raca,peso_kg").eq("clinica_id", clinicaId).order("nome").limit(2000),
-    ]).then(([c, logo, p, t, a]) => {
+      supabase.auth.getSession().then(({ data }) => data.session
+        ? obterModeloDocumentoEmissao({ data: { accessToken: data.session.access_token, clinicaId, tipo: "orcamento" } })
+        : Promise.resolve(null)).catch(() => {
+          if (ativo) toast.error("Não foi possível carregar a identidade e o tema configurados para o orçamento.");
+          return null;
+        }),
+    ]).then(([c, logo, p, t, a, documento]) => {
       if (!ativo) return;
       if (c.error || p.error) throw new Error(c.error?.message || p.error?.message);
       setClinica(c.data || {});
-      const logoUrl = logo.data?.logo_url;
+      const modeloEmitido = documento?.modelo ?? { fundo: "", texto: "", usarLogo: true, corQuadros: "#a6c4d9" };
+      setModeloDocumentoOrcamento(modeloEmitido);
+      setIdentidadeDocumento(documento?.identidade ?? null);
+      const fundoUrl = urlFundoDocumento(modeloEmitido.fundo);
+      if (fundoUrl) {
+        const imagemFundo = new Image();
+        imagemFundo.onload = () => { if (ativo) setFundoClinica(imagemFundo); };
+        imagemFundo.src = fundoUrl;
+      }
+      const logoUrl = modeloEmitido.usarLogo
+        ? documento?.identidade.logoUrl || documento?.identidade.logoAlternativa || logo.data?.logo_url
+        : "";
       if (logoUrl) {
         const imagem = new Image();
         imagem.crossOrigin = "anonymous";
@@ -163,20 +191,28 @@ function OrcamentoVendaExpressa() {
       toast.error("Inclua itens e quantidades válidas."); return null;
     }
     const largura = 1240, altura = Math.max(1754, 730 + linhas.length * 72 + (observacoes.length > 0 ? 180 + Math.ceil(observacoes.length / 70) * 30 : 0));
+    const tema = obterTemaDocumentoPremium(modeloDocumentoOrcamento.fundo);
+    const corMarca = tema?.acento || "#692b40";
+    const corPapel = tema?.papel || "#ffffff";
     const canvas = document.createElement("canvas"); canvas.width = largura; canvas.height = altura;
     const ctx = canvas.getContext("2d"); if (!ctx) return null;
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, largura, altura);
-    ctx.fillStyle = "#692b40"; ctx.fillRect(0, 0, largura, 16);
+    ctx.fillStyle = corPapel; ctx.fillRect(0, 0, largura, altura);
+    if (fundoClinica) {
+      ctx.globalAlpha = 0.12;
+      ctx.drawImage(fundoClinica, 0, 0, largura, altura);
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = corMarca; ctx.fillRect(0, 0, largura, 16);
     if (logoClinica) ctx.drawImage(logoClinica, 74, 42, 150, 62);
     ctx.fillStyle = "#182239"; ctx.font = "bold 40px Arial";
-    ctx.fillText(texto(clinica.nome) || texto(clinica.clinica_nome) || "Clínica veterinária", logoClinica ? 250 : 74, 105);
+    ctx.fillText(texto(identidadeDocumento?.nome) || texto(clinica.nome) || texto(clinica.clinica_nome) || "Clínica veterinária", logoClinica ? 250 : 74, 105);
     ctx.font = "22px Arial"; ctx.fillStyle = "#4b5563";
-    const endereco = [texto(clinica.endereco), texto(clinica.numero), texto(clinica.bairro), texto(clinica.cidade), texto(clinica.uf)].filter(Boolean).join(", ");
+    const endereco = texto(identidadeDocumento?.endereco) || [texto(clinica.endereco), texto(clinica.numero), texto(clinica.bairro), texto(clinica.cidade), texto(clinica.uf)].filter(Boolean).join(", ");
     const dados = [
-      [texto(clinica.razao_social), texto(clinica.cnpj) ? "CNPJ: " + texto(clinica.cnpj) : ""].filter(Boolean).join(" · "),
+      [texto(identidadeDocumento?.razaoSocial) || texto(clinica.razao_social), texto(identidadeDocumento?.cnpj) || texto(clinica.cnpj) ? "CNPJ: " + (texto(identidadeDocumento?.cnpj) || texto(clinica.cnpj)) : ""].filter(Boolean).join(" · "),
       endereco,
       [texto(clinica.complemento), texto(clinica.cep) ? "CEP " + texto(clinica.cep) : ""].filter(Boolean).join(" · "),
-      [texto(clinica.telefone), texto(clinica.email)].filter(Boolean).join(" · "),
+      [texto(identidadeDocumento?.telefone) || texto(clinica.telefone), texto(identidadeDocumento?.email) || texto(clinica.email)].filter(Boolean).join(" · "),
     ].filter(Boolean);
     dados.forEach((s, i) => {
       let parte = s;
@@ -184,7 +220,7 @@ function OrcamentoVendaExpressa() {
       ctx.fillText(parte, 74, 145 + i * 30);
     });
     ctx.strokeStyle = "#e3e5eb"; ctx.beginPath(); ctx.moveTo(74, 268); ctx.lineTo(1166, 268); ctx.stroke();
-    ctx.fillStyle = "#692b40"; ctx.font = "bold 36px Arial"; ctx.fillText("ORÇAMENTO", 74, 331);
+    ctx.fillStyle = corMarca; ctx.font = "bold 36px Arial"; ctx.fillText("ORÇAMENTO", 74, 331);
     ctx.font = "21px Arial"; ctx.fillStyle = "#374151";
     ctx.fillText("Emissão: " + new Date().toLocaleDateString("pt-BR"), 74, 372);
     ctx.fillText("Validade: " + Math.max(1, Math.min(365, Math.floor(Number(validade)||7))) + " dia(s)", 430, 372);
@@ -199,8 +235,8 @@ function OrcamentoVendaExpressa() {
       ctx.font = "20px Arial"; ctx.fillStyle = "#4b5563";
       ctx.fillText([animal.especie, animal.raca, animal.sexo, animal.peso_kg ? animal.peso_kg + " kg" : ""].filter(Boolean).join(" · "), 610, 484, 540);
     }
-    ctx.fillStyle = "#f5eef1"; ctx.fillRect(74, 510, 1092, 58);
-    ctx.fillStyle = "#692b40"; ctx.font = "bold 23px Arial";
+    ctx.fillStyle = tema?.quadro || modeloDocumentoOrcamento.corQuadros || "#f5eef1"; ctx.fillRect(74, 510, 1092, 58);
+    ctx.fillStyle = corMarca; ctx.font = "bold 23px Arial";
     ctx.fillText("DESCRIÇÃO", 93, 547); ctx.fillText("QTD.", 780, 547); ctx.fillText("TOTAL", 980, 547);
     let y = 617;
     itens.forEach(({ linha, produto, preco, subtotalCentavos }) => {
@@ -216,7 +252,7 @@ function OrcamentoVendaExpressa() {
       ctx.strokeStyle = "#e3e5eb"; ctx.beginPath(); ctx.moveTo(74, y + 35); ctx.lineTo(1166, y + 35); ctx.stroke();
       y += 72;
     });
-    ctx.fillStyle = "#692b40"; ctx.font = "bold 33px Arial"; ctx.fillText("TOTAL: " + moeda(total), 760, y + 50);
+    ctx.fillStyle = corMarca; ctx.font = "bold 33px Arial"; ctx.fillText("TOTAL: " + moeda(total), 760, y + 50);
     if (observacoes.trim()) {
       ctx.fillStyle = "#182239"; ctx.font = "bold 22px Arial"; ctx.fillText("Observações", 74, y + 132);
       ctx.font = "20px Arial"; ctx.fillStyle = "#4b5563";

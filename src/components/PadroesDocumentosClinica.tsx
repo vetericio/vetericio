@@ -2,7 +2,6 @@ import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, ImagePlus, Save } from "lucide-react";
 import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   obterModelosDocumentoClinica, salvarDadosDocumentoClinica, salvarLogoDocumentoClinica, salvarModeloDocumentoClinica,
 } from "@/lib/configuracoes-clinica.functions";
@@ -46,9 +45,6 @@ const campos = [
 
 export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   const [dados, setDados] = useState<Awaited<ReturnType<typeof obterModelosDocumentoClinica>> | null>(null);
-  const [aba, setAba] = useState("modelos");
-  const [orientacoes, setOrientacoes] = useState("");
-  const receitaSalva = useRef<ModeloDocumentoPadrao | null>(null);
   const [tipo, setTipo] = useState<TipoModeloDocumento>("receita");
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -60,9 +56,6 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
       .then(accessToken => obterModelosDocumentoClinica({ data: { accessToken, clinicaId } }))
       .then(resposta => {
         if (!ativo) return;
-        const receita = resposta.modelos.receita;
-        receitaSalva.current = receita;
-        setOrientacoes(limparOrientacoesPadraoReceita(receita.texto));
         setDados(resposta);
       })
       .catch((e: Error) => { if (ativo) setErro(e.message); });
@@ -78,10 +71,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   const modelo = modelos[tipo];
   const categoria = DOCUMENTOS[tipo];
   const usaTextoPadrao = tipo === "pedido" || tipo === "documento" || tipo === "termo";
-  const editandoOrientacoes = aba === "orientacoes";
-  const orientacoesEditadas = limparOrientacoesPadraoReceita(orientacoes);
-  const textoPrevia = editandoOrientacoes ? orientacoesEditadas
-    : tipo === "receita" ? limparOrientacoesPadraoReceita(modelo.texto)
+  const textoPrevia = tipo === "receita" ? limparOrientacoesPadraoReceita(modelo.texto)
     : usaTextoPadrao ? modelo.texto || categoria.exemplo : "";
   const corpo = preencherTextoDocumento(textoPrevia, valoresModeloDocumento(identidade, exemplo));
 
@@ -94,20 +84,6 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
     try { await acao(); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Não foi possível concluir."); }
     finally { setOcupado(false); }
-  }
-
-  async function salvarOrientacoes() {
-    const receita = receitaSalva.current;
-    if (!receita) return;
-    const modeloSalvo = { ...receita, texto: orientacoesEditadas };
-    const accessToken = await tokenConfiguracoesClinica();
-    await salvarModeloDocumentoClinica({ data: { accessToken, clinicaId, tipo: "receita", modelo: modeloSalvo } });
-    receitaSalva.current = modeloSalvo;
-    setDados(atual => atual && ({
-      ...atual, modelos: { ...atual.modelos, receita: { ...atual.modelos.receita, texto: modeloSalvo.texto } },
-    }));
-    setOrientacoes(modeloSalvo.texto);
-    toast.success("Texto final da receita salvo.");
   }
 
   async function trocarLogo(arquivo: File | null) {
@@ -127,12 +103,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
     toast.success(arquivo ? "Logo dos documentos atualizada." : "Logo do cadastro restaurada.");
   }
 
-  return <Tabs value={aba} onValueChange={setAba} className="space-y-4 rounded-xl border bg-card p-4 sm:p-5">
-    <TabsList aria-label="Configurações dos documentos" className="h-auto w-full flex-wrap justify-start">
-      <TabsTrigger value="modelos" className="min-h-10">Modelos e fundos</TabsTrigger>
-      <TabsTrigger value="orientacoes" className="min-h-10">Texto final da receita</TabsTrigger>
-    </TabsList>
-    <TabsContent value="modelos" className="space-y-5">
+  return <section className="space-y-4 rounded-xl border bg-card p-4 sm:p-5">
       <div>
         <h2 className="text-lg font-semibold">Modelos e fundos de documentos</h2>
         <p className="mt-1 text-sm text-muted-foreground">Personalize os modelos de documento da {identidade.nome}.</p>
@@ -257,31 +228,41 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
           const accessToken = await tokenConfiguracoesClinica();
           const modeloSalvo = tipo === "receita" ? { ...modelo, texto: limparOrientacoesPadraoReceita(modelo.texto) } : modelo;
           await salvarModeloDocumentoClinica({ data: { accessToken, clinicaId, tipo, modelo: modeloSalvo } });
-          if (tipo === "receita") receitaSalva.current = modeloSalvo;
           atualizar(modeloSalvo);
           toast.success("Padrão salvo para " + categoria.titulo.toLocaleLowerCase("pt-BR") + ".");
         })}><Save size={16} /> {ocupado ? "Processando…" : "Salvar padrão deste tipo"}</button>
       </fieldset>
-    </TabsContent>
-    <TabsContent value="orientacoes" className="space-y-4">
-      <h2 className="text-lg font-semibold">Texto final da receita</h2>
-      <form onSubmit={e => { e.preventDefault(); void executar(salvarOrientacoes); }}>
-        <fieldset disabled={ocupado} className="space-y-3">
-          <label className="block text-sm font-semibold">
-            Texto padrão da clínica
-            <textarea rows={5} maxLength={25000} value={orientacoes} onChange={e => setOrientacoes(e.target.value)}
-              aria-describedby="ajuda-orientacoes-receita" className="mt-1 w-full rounded-lg border bg-background p-3 font-normal" />
-          </label>
-          <p id="ajuda-orientacoes-receita" className="text-xs text-muted-foreground">Este texto será incluído automaticamente após a prescrição e as orientações individuais, antes da data e da assinatura/carimbo. Deixe em branco para não incluir texto final.</p>
-          <button type="submit" className={botao + " bg-primary text-primary-foreground"}>
-            <Save size={16} /> {ocupado ? "Salvando…" : "Salvar texto final"}
-          </button>
-        </fieldset>
-      </form>
-    </TabsContent>
-    <PreviaDocumento identidade={identidade} modelo={editandoOrientacoes ? modelos.receita : modelo}
-      tipo={editandoOrientacoes ? "receita" : tipo} corpo={corpo} />
-  </Tabs>;
+    {tipo === "orcamento" ? <PreviaOrcamento identidade={identidade} modelo={modelo} />
+      : <PreviaDocumento identidade={identidade} modelo={modelo} tipo={tipo} corpo={corpo} />}
+  </section>;
+}
+
+function PreviaOrcamento({ identidade, modelo }: { identidade: IdentidadeDocumento; modelo: ModeloDocumentoPadrao }) {
+  const tema = obterTemaDocumentoPremium(modelo.fundo);
+  const acento = tema?.acento || "#692b40";
+  const quadro = tema?.quadro || modelo.corQuadros;
+  const logo = modelo.usarLogo ? identidade.logoUrl || identidade.logoAlternativa : "";
+  return <section className="border-t pt-4" aria-label="Prévia do orçamento">
+    <h3 className="mb-3 text-sm font-semibold">Prévia do orçamento</h3>
+    <div className="mx-auto aspect-[210/297] w-full max-w-lg overflow-hidden rounded-lg border bg-white p-[6%] shadow-sm" style={{ backgroundColor: tema?.papel || "#ffffff", color: tema?.texto || "#222222" }}>
+      <div className="h-1.5 w-full" style={{ backgroundColor: acento }} />
+      <header className="flex items-center gap-3 border-b py-4">
+        {logo && <img src={logo} alt="Logo da clínica" className="h-12 max-w-20 object-contain" />}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold sm:text-base">{identidade.nome || "Sua clínica veterinária"}</p>
+          <p className="truncate text-[10px] text-muted-foreground sm:text-xs">{identidade.razaoSocial || identidade.endereco || "Dados da clínica"}</p>
+        </div>
+      </header>
+      <div className="flex items-center justify-between gap-2 py-4 text-[10px] sm:text-xs">
+        <div><h4 className="text-sm font-bold tracking-wide sm:text-lg" style={{ color: acento }}>ORÇAMENTO</h4><p>Emissão: {new Date().toLocaleDateString("pt-BR")}</p><p>Validade: 7 dias</p></div>
+        <div className="text-right"><p className="font-bold">TUTOR</p><p>Marina Exemplo</p><p className="mt-2 font-bold">ANIMAL</p><p>Luna · Canina</p></div>
+      </div>
+      <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-2 text-[9px] font-bold sm:text-xs" style={{ backgroundColor: quadro, color: acento }}><span>DESCRIÇÃO</span><span>QTD.</span><span>TOTAL</span></div>
+      <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b px-2 py-3 text-[10px] sm:text-xs"><span>Consulta veterinária</span><span>1</span><span>R$ 180,00</span></div>
+      <div className="mt-4 text-right text-xs font-bold sm:text-base" style={{ color: acento }}>TOTAL: R$ 180,00</div>
+      <p className="mt-10 text-[8px] text-muted-foreground sm:text-[10px]">Documento comercial informativo. Não confirma venda, pagamento ou reserva de estoque.</p>
+    </div>
+  </section>;
 }
 
 async function gerarPrevia(identidade: IdentidadeDocumento, modelo: ModeloDocumentoPadrao, tipo: TipoModeloDocumento, corpo: string) {

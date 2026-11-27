@@ -1,4 +1,4 @@
-export const TIPOS_MODELO_DOCUMENTO = ["receita", "pedido", "documento", "termo", "vacina", "vermifugo"] as const;
+export const TIPOS_MODELO_DOCUMENTO = ["receita", "pedido", "documento", "termo", "vacina", "vermifugo", "orcamento"] as const;
 export type TipoModeloDocumento = (typeof TIPOS_MODELO_DOCUMENTO)[number];
 
 export const DOCUMENTOS = {
@@ -27,6 +27,10 @@ export const DOCUMENTOS = {
   vermifugo: {
     titulo: "Comprovante de vermifugação",
     exemplo: "Registro de vermifugação referente ao animal {{paciente}}, sob responsabilidade de {{tutor}}.\n\nOrientações após a administração:\n\nRecomendações para acompanhamento:",
+  },
+  orcamento: {
+    titulo: "Orçamento",
+    exemplo: "Proposta de serviços e produtos para {{paciente}}, sob responsabilidade de {{tutor}}.",
   },
 } satisfies Record<TipoModeloDocumento, { titulo: string; exemplo: string }>;
 

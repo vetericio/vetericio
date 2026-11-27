@@ -124,7 +124,7 @@ const areas: AreaMenu[] = [
       { to: "/animais", rotulo: "Pesquisar animais", permissao: "consultorio.atendimentos" },
       { to: "/assinar", rotulo: "Assinar documento", permissao: "consultorio.receituario" },
       { to: "/receituario", rotulo: "Receituário", permissao: "consultorio.receituario" },
-      { to: "/termos", rotulo: "Documentos e orçamentos", permissao: "consultorio.receituario" },
+      { to: "/termos", rotulo: "Termos e documentos", permissao: "consultorio.receituario" },
       { to: "/medicacoes", rotulo: "Medicações", permissao: "consultorio.medicacoes" },
       { rotulo: "Internação", separador: "internacao" },
       { to: "/internacao", rotulo: "Painel de internação", permissao: "internacao.painel" },
