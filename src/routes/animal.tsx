@@ -28,7 +28,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { ComandaAtendimento } from "@/components/ComandaAtendimento";
@@ -49,6 +49,8 @@ import { enviarAnexoPortal } from "@/lib/drive.functions";
 import { PORTAL_PDF_MAX_BYTES } from "@/lib/drive-storage";
 import { registrarRetornoClinico } from "@/lib/crm-retornos.functions";
 import { calcularDataRetorno, formatarDataRetorno, OPCOES_DIAS_RETORNO } from "@/lib/crm-prazos-retorno";
+
+import { ehRegistroConsulta, resumirConsulta } from "@/lib/resumo-consulta";
 
 export const Route = createFileRoute("/animal")({ component: AnimalFicha });
 
@@ -115,6 +117,8 @@ type Registro = {
   data: string;
   criadoEm: string;
   subtipo?: string;
+  dados?: unknown;
+  status?: string;
   autorId?: string;
   autorNome?: string;
   autorCrmv?: string;
@@ -1848,21 +1852,45 @@ function Info({ rotulo, valor }: { rotulo: string; valor?: string }) {
     </div>
   );
 }
+function CartaoRegistroClinico({
+  registro,
+  mostrarDetalhe = false,
+}: {
+  registro: Registro;
+  mostrarDetalhe?: boolean;
+}) {
+  const resumoId = useId();
+  const consulta = ehRegistroConsulta(registro);
+  const data = formatarData(registro.data);
+  return (
+    <Link
+      to="/consulta"
+      search={{ animalId: registro.animalId, registroId: registro.id } as never}
+      aria-label={`Abrir ${registro.titulo} de ${data}`}
+      aria-describedby={consulta ? resumoId : undefined}
+      className="block min-w-0 rounded-xl border p-3 transition hover:border-primary hover:bg-primary/[0.025] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
+      <div className="text-xs text-muted-foreground">{data}</div>
+      <div className="font-bold">{registro.titulo}</div>
+      {consulta ? (
+        <p id={resumoId} className="mt-1 line-clamp-2 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+          {resumirConsulta(registro)}
+        </p>
+      ) : mostrarDetalhe && registro.detalhe ? (
+        <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
+          {registro.detalhe}
+        </p>
+      ) : null}
+      <div className="mt-1.5 text-xs font-bold text-primary">{consulta ? "Abrir" : "Abrir registro"} →</div>
+    </Link>
+  );
+}
 function ListaMini({ registros, vazio }: { registros: Registro[]; vazio: string }) {
   return registros.length ? (
     <div className="space-y-2">
       {registros.map((r) =>
         r.tipo === "Registros clínicos" ? (
-          <Link
-            key={r.id}
-            to="/consulta"
-            search={{ animalId: r.animalId, registroId: r.id } as never}
-            className="block rounded-xl border p-3 transition hover:border-primary hover:bg-primary/[0.025]"
-          >
-            <div className="text-xs text-muted-foreground">{formatarData(r.data)}</div>
-            <div className="font-bold">{r.titulo}</div>
-            <div className="mt-1 text-[11px] font-bold text-primary">Abrir consulta →</div>
-          </Link>
+          <CartaoRegistroClinico key={r.id} registro={r} />
         ) : (
           <div key={r.id} className="rounded-xl border p-3">
             <div className="flex items-start justify-between gap-2">
@@ -2137,23 +2165,7 @@ function RegistrosClinicos({ animalId, clinicaId, registros }: { animalId: strin
             </div>
             <div className="space-y-2">
               {registros.map((r) => (
-                <Link
-                  key={r.id}
-                  to="/consulta"
-                  search={{ animalId, registroId: r.id } as never}
-                  className="block rounded-xl border p-3 transition hover:border-primary hover:bg-primary/[0.025]"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong>{r.titulo}</strong>
-                    <span className="text-xs text-muted-foreground">{formatarData(r.data)}</span>
-                  </div>
-                  {r.detalhe && (
-                    <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
-                      {r.detalhe}
-                    </p>
-                  )}
-                  <div className="mt-2 text-[11px] font-black text-primary">Abrir registro →</div>
-                </Link>
+                <CartaoRegistroClinico key={r.id} registro={r} mostrarDetalhe />
               ))}
             </div>
           </div>
