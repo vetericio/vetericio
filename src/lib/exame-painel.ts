@@ -175,7 +175,7 @@ const sugestoesComplementares: Record<string, [string, string, string]> = {
 };
 
 export function sugerirReferenciaLab(
-  linha: LinhaLab,
+  linha: LinhaLabRascunho,
   especie: EspecieLab,
   faixaEtaria: FaixaEtariaLab | null,
 ): LinhaLabRascunho {
