@@ -234,7 +234,14 @@ export function Recepcao() {
       return;
     }
 
-    setAvisoAgendamento("Não há horário livre nesta data. Escolha outro dia ou outra agenda.");
+    const estado = agenda?.querySelector<HTMLElement>("[data-oricse-estado-grade]")?.dataset.oricseEstadoGrade;
+    setAvisoAgendamento(
+      estado === "pronta"
+        ? "Não há horário livre nesta data. Escolha outro dia ou outra agenda."
+        : estado === "erro"
+          ? "Não foi possível verificar horários. Use Tentar novamente na agenda."
+          : "Aguarde a verificação dos horários da agenda.",
+    );
     agenda?.scrollIntoView({ behavior: "smooth", block: "start" });
     agenda?.querySelector<HTMLButtonElement>('[data-oricse-data-agenda]')?.focus({ preventScroll: true });
   }

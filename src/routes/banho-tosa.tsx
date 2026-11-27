@@ -1,9 +1,11 @@
 import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { createFileRoute, useLocation } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { AgendaDayBoard, AgendaErrorBoundary } from "@/components/agenda/AgendaDayBoard";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { FUSO_BANHO, horaBanhoDoLink, horaGradeBanho, instanteBanho } from "@/lib/banho-horario";
 import { PainelPacotesBanhoTosa, SelecionarPacoteBanho } from "@/components/PacotesBanhoTosa";
 import type { FormEvent } from "react";
 import { toast } from "sonner";
@@ -23,9 +25,9 @@ const verificacoes = ["Conferência da pele e pelagem","Conferência de olhos e 
 const abas = [{id:"painel",nome:"Painel"},{id:"agenda",nome:"Agenda"},{id:"fila",nome:"Fila de serviços"},{id:"historico",nome:"Histórico"},{id:"pacotes",nome:"Pacotes"}] as const;
 type Aba = typeof abas[number]["id"];
 const dinheiro=(c:number)=> (c/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-const dataLocal=(v:string)=>new Date(v).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
-const hoje=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
-const isoLocal=()=>{const d=new Date();return `${hoje()}T${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`};
+const dataLocal=(v:string)=>new Date(v).toLocaleString("pt-BR",{timeZone:FUSO_BANHO,dateStyle:"short",timeStyle:"short"});
+const isoLocal=()=>horaGradeBanho(new Date());
+const hoje=()=>isoLocal().slice(0,10);
 const card="rounded-2xl border bg-card p-4 shadow-sm";
 const campo="mt-1 w-full min-h-11 rounded-xl border bg-background px-3 text-foreground";
 function BanhoTosa(){
@@ -36,7 +38,7 @@ function BanhoTosa(){
  const [aba,setAba]=useState<Aba>(()=>typeof window!=="undefined"?abaDaUrl(window.location.hash):"painel");
  const [mostrarNovoAgendamento,setMostrarNovoAgendamento]=useState(() => typeof window !== "undefined" && window.location.hash === "#novo");
  useEffect(()=>{setAba(abaDaUrl(location.hash));if(location.hash==="#novo")setMostrarNovoAgendamento(true);},[location.hash]);
- useEffect(()=>{if(location.hash.replace(/^#/,"")==="novo"){const qs=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");const prof=qs.get("profissional"),hora=qs.get("inicio");if(prof)setProfissional(prof);if(hora&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(hora)){setInicio(hora);setPacoteId("");}}},[location.hash,location.search]);
+ useEffect(()=>{if(location.hash.replace(/^#/,"")==="novo"){const qs=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");const prof=qs.get("profissional"),hora=horaBanhoDoLink(qs.get("inicio"));if(prof)setProfissional(prof);if(hora){setInicio(hora);setPacoteId("");}}},[location.hash,location.search]);
  const [carregando,setCarregando]=useState(true),[salvando,setSalvando]=useState(false);
  const [erro,setErro]=useState("");
  const [tutores,setTutores]=useState<Tutor[]>([]),[animais,setAnimais]=useState<Animal[]>([]);
@@ -56,6 +58,7 @@ function BanhoTosa(){
  const [repeticoesBanho,setRepeticoesBanho]=useState(1);
  const [frequenciaBanho,setFrequenciaBanho]=useState(7);
  const [edicaoBanho,setEdicaoBanho]=useState<{item:Atendimento;inicio:string;profissional:string;obs:string;serie:boolean}|null>(null);
+ const retornoFocoEdicao = useRef<HTMLButtonElement | null>(null);
  const db=supabaseBanco as any;
  const podeOperar=adminGlobal||pode("hotelzinho.operar")||pode("recepcao.agenda");
  const podeVenderPacote=!demoAlvorada&&podeOperar&&(adminGlobal||pode("caixa.comandas")||pode("caixa.financeiro.gerenciar"));
@@ -81,7 +84,7 @@ function BanhoTosa(){
  }
  useEffect(()=>{if(!carregandoPermissoes&&clinicaId)void carregar();else if(!carregandoPermissoes){setCarregando(false);setErro("Selecione uma clínica.");}},[clinicaId,carregandoPermissoes]);
  const selecionado=servicos.find(s=>s.id===servicoId);
- const doDia=atendimentos.filter(a=>a.inicio.slice(0,10)===data||new Date(a.inicio).toLocaleDateString("en-CA")===data).sort((a,b)=>a.inicio.localeCompare(b.inicio));
+ const doDia=atendimentos.filter(a=>horaGradeBanho(a.inicio).slice(0,10)===data).sort((a,b)=>a.inicio.localeCompare(b.inicio));
  const datasAgenda=useMemo(()=>{
   const [ano,mes,diaMes]=data.split("-").map(Number);
   const referencia=new Date(ano,mes-1,diaMes);
@@ -106,12 +109,6 @@ function BanhoTosa(){
  const encerrados=atendimentos.filter(a=>["entregue","cancelado"].includes(a.status));
  const detalhe=atendimentos.find(a=>a.id===detalheId);
  const podeEditarHorarioBanho=(a:Atendimento)=>podeOperar&&a.status==="agendado"&&Date.parse(a.inicio)>Date.now()&&!a.pago&&!a.pacote_id&&!pagamentos.some(p=>p.agendamento_banho_tosa_id===a.id);
- function horaGradeBanho(iso:string){
-  const data=new Date(iso);
-  const d=data.toLocaleDateString("sv-SE",{timeZone:"America/Sao_Paulo"});
-  const h=data.toLocaleTimeString("pt-BR",{timeZone:"America/Sao_Paulo",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
-  return d+"T"+h;
- }
  function abrirEdicaoBanho(item:Atendimento){
   setEdicaoBanho({item,inicio:horaGradeBanho(item.inicio),profissional:item.profissional,obs:item.observacoes||"",serie:false});
  }
@@ -135,7 +132,7 @@ function BanhoTosa(){
  async function agendar(e:FormEvent){
   e.preventDefault();if(!clinicaId||!podeOperar||salvando)return;
   const animal=nomesAnimais.get(animalId),servico=selecionado;
-  const comeco=new Date(inicio);
+  const comeco=instanteBanho(inicio);
   if(!animal||!servico||!Number.isFinite(comeco.getTime()))return toast.error("Selecione animal, serviço e horário.");
   if(repeticoesBanho>1){
    const [data,hora]=inicio.split("T");
@@ -203,7 +200,7 @@ function BanhoTosa(){
    <div className="flex flex-wrap justify-between gap-2"><div><h3 className="font-semibold">{pet?.nome||"Animal"} · {a.servico_nome}</h3><p className="text-sm text-muted-foreground">{nomesTutores.get(a.tutor_id)||"Tutor"} · {dataLocal(a.inicio)} · {a.profissional||"Sem profissional definido"}</p></div><div className="text-right"><strong>{dinheiro(a.valor_centavos+totalExtras)}</strong><p className="text-sm">{a.status.replaceAll("_"," ")}</p></div></div>
    {a.observacoes&&<p className="mt-2 text-sm">{a.observacoes}</p>}
    {a.serie_id&&<p className="mt-1 text-xs font-semibold text-primary">{a.serie_excecao?"Exceção da série":"Série de horários"}</p>}
-   {podeEditarHorarioBanho(a)&&<button type="button" className="mr-2 mt-2 rounded-lg border px-3 py-2 text-sm font-semibold" onClick={()=>abrirEdicaoBanho(a)}>Editar horário</button>}
+   {podeEditarHorarioBanho(a)&&<button type="button" className="mr-2 mt-2 rounded-lg border px-3 py-2 text-sm font-semibold" onClick={e=>{retornoFocoEdicao.current=e.currentTarget;abrirEdicaoBanho(a);}}>Editar horário</button>}
    {a.pacote_id&&<p className="mt-1 text-sm font-semibold">Serviço coberto por pacote</p>}
    <button type="button" className="mt-2 rounded-lg border px-3 py-2 text-sm font-semibold" onClick={()=>{setVinculoPacote({agendamentoId:a.id,pacoteId:""});setDetalheId(a.id);setAvaliacao(a.avaliacao_entrada||"");setRestricoes(a.restricoes||"");setSaida(a.observacoes_saida||"");}}>Abrir ficha completa</button>
    {podeOperar&& !["entregue","cancelado"].includes(a.status)&&<div className="mt-3 flex flex-wrap gap-2">
@@ -215,10 +212,11 @@ function BanhoTosa(){
  if(carregandoPermissoes)return <main className="p-6">Carregando permissões…</main>;
  return <main className="mx-auto max-w-7xl space-y-5 p-4 pb-20 sm:p-6">
   <header className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-semibold text-primary">ORICSE · Petshop</p><h1 className="text-3xl font-bold">Banho e tosa</h1><p className="text-muted-foreground">Agendamentos, atendimento, equipe e serviços</p></div><button onClick={()=>void carregar()} className="rounded-xl border px-4 py-2">Atualizar</button></header>
-  {edicaoBanho&&<div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 p-4">
-   <form role="dialog" aria-modal="true" aria-label="Editar horário de banho e tosa" onSubmit={salvarEdicaoBanho} className="max-h-[90vh] w-full max-w-lg space-y-3 overflow-auto rounded-2xl border bg-card p-5">
-    <h2 className="text-xl font-bold">Editar horário de banho e tosa</h2>
-    <p className="text-sm text-muted-foreground">{nomesAnimais.get(edicaoBanho.item.animal_id)?.nome||"Animal"} · {edicaoBanho.item.servico_nome}</p>
+  <Dialog open={Boolean(edicaoBanho)} onOpenChange={aberto=>{if(!aberto&&!salvando)setEdicaoBanho(null);}}>
+   {edicaoBanho&&<DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-auto rounded-2xl bg-card p-5" onCloseAutoFocus={e=>{e.preventDefault();retornoFocoEdicao.current?.focus();}}>
+   <form onSubmit={salvarEdicaoBanho} className="space-y-3">
+    <DialogTitle className="text-xl font-bold">Editar horário de banho e tosa</DialogTitle>
+    <DialogDescription>{nomesAnimais.get(edicaoBanho.item.animal_id)?.nome||"Animal"} · {edicaoBanho.item.servico_nome}</DialogDescription>
     {edicaoBanho.item.serie_id&&!edicaoBanho.item.serie_excecao&&<label className="block text-sm font-semibold">Aplicar alterações a
       <select aria-label="Aplicar alterações a" className={campo} value={edicaoBanho.serie?"serie":"um"} onChange={e=>setEdicaoBanho(atual=>{
         if(!atual)return null;
@@ -234,7 +232,8 @@ function BanhoTosa(){
     <p className="text-xs text-muted-foreground">Pagamentos e pacotes não são alterados. Horários vinculados a pacotes ou pagos ficam fora da edição em série.</p>
     <div className="flex justify-end gap-2"><button type="button" onClick={()=>setEdicaoBanho(null)} disabled={salvando} className="rounded-xl border px-4 py-2 text-sm">Fechar</button><button disabled={salvando} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">{edicaoBanho.serie?"Salvar série":"Salvar horário"}</button></div>
    </form>
-  </div>}
+   </DialogContent>}
+  </Dialog>
   {detalhe&&<section className={card+" space-y-4"} aria-label="Ficha completa do atendimento">
     <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-bold">Ficha de atendimento · {nomesAnimais.get(detalhe.animal_id)?.nome||"Animal"}</h2><p className="text-sm text-muted-foreground">{detalhe.servico_nome} · {nomesTutores.get(detalhe.tutor_id)} · {dataLocal(detalhe.inicio)}</p></div><button type="button" onClick={()=>setDetalheId("")} className="rounded-lg border px-3 py-2">Fechar ficha</button></div>
     {detalhe.pacote_id ? <p className="rounded-xl border p-3 text-sm font-semibold">Serviço coberto por pacote; só os extras podem ter cobrança aqui.</p> :
@@ -279,7 +278,7 @@ function BanhoTosa(){
    {aba==="agenda" && mostrarNovoAgendamento &&<form onSubmit={agendar} className={card+" grid gap-4 sm:grid-cols-2"}>
     <label>Animal<select required className={campo} value={animalId} onChange={e=>{setAnimalId(e.target.value);setPacoteId("");}}><option value="">Selecione</option>{animais.map(a=><option key={a.id} value={a.id}>{a.nome} — {nomesTutores.get(a.tutor_id)||"Tutor"}</option>)}</select></label>
     <label>Serviço<select required className={campo} value={servicoId} onChange={e=>{setServicoId(e.target.value);setPacoteId("");}}><option value="">Selecione</option>{servicos.filter(x=>x.ativo).map(x=><option key={x.id} value={x.id}>{x.nome} · {dinheiro(x.preco_centavos)}</option>)}</select></label>
-    <label>Data e horário<input required type="datetime-local" className={campo} value={inicio} onChange={e=>{setInicio(e.target.value);setPacoteId("");}}/></label>
+    <label>Data e horário (Brasília)<input required type="datetime-local" className={campo} value={inicio} onChange={e=>{setInicio(e.target.value);setPacoteId("");}}/></label>
     <label>Profissional<input className={campo} value={profissional} onChange={e=>setProfissional(e.target.value)}/></label>
     <div className="sm:col-span-2 rounded-xl border p-3">
       <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={repeticoesBanho>1} onChange={e=>{setRepeticoesBanho(e.target.checked?4:1);setPacoteId("");}}/> Repetir serviço</label>

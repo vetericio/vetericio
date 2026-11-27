@@ -36,6 +36,10 @@ import {
   STATUS_AGENDA,
   STATUS_BANHO,
   acoesAgenda,
+  categoriaAgendaBanhoTosa,
+  dataHoraNoFuso,
+  FUSO_PADRAO_AGENDA,
+  instanteDaAgenda,
   diasDaVisaoAgenda,
   moverVisaoAgenda,
   statusAgenda,
@@ -191,8 +195,8 @@ function minutos(hora: string) {
 function horaDeMinutos(total: number) {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
-function dataIso(data: Date) {
-  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
+function hojeAgenda() {
+  return dataHoraNoFuso(new Date())?.data ?? new Date().toISOString().slice(0, 10);
 }
 function dataPorIso(valor: string) {
   const [a, m, d] = valor.split("-").map(Number);
@@ -319,15 +323,6 @@ function origemEvento(evento: AgendamentoDb) {
 function corValida(valor?: string | null): CorAgenda {
   return CORES.includes(valor as CorAgenda) ? (valor as CorAgenda) : "verde";
 }
-function categoriaAgendaBanhoTosa(tipo?: string | null) {
-  const nome = String(tipo || "").toLocaleLowerCase("pt-BR");
-  const banho = nome.includes("banho"),
-    tosa = nome.includes("tosa");
-  if (banho && tosa) return "banho e tosa";
-  if (banho) return "banho";
-  if (tosa) return "tosa";
-  return "";
-}
 function agendaDaBanhoTosa(
   agendas: Partial<AgendaDb>[],
   profissional?: string | null,
@@ -366,35 +361,19 @@ function resumoDias(lista: number[]) {
 }
 function fusoSeguro(timeZone?: string | null) {
   const candidato = typeof timeZone === "string" ? timeZone.trim() : "";
-  if (!candidato) return "America/Sao_Paulo";
+  if (!candidato) return FUSO_PADRAO_AGENDA;
   try {
     new Intl.DateTimeFormat("pt-BR", { timeZone: candidato });
     return candidato;
   } catch {
-    return "America/Sao_Paulo";
+    return FUSO_PADRAO_AGENDA;
   }
 }
 function horaNoFuso(valor: string, timeZone: string) {
-  const data = new Date(valor);
-  if (Number.isNaN(data.getTime())) return "";
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: fusoSeguro(timeZone),
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(data);
+  return dataHoraNoFuso(new Date(valor), timeZone)?.hora || "";
 }
 function dataNoFuso(valor: string, timeZone: string) {
-  const data = new Date(valor);
-  if (Number.isNaN(data.getTime())) return "";
-  const partes = new Intl.DateTimeFormat("en-CA", {
-    timeZone: fusoSeguro(timeZone),
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(data);
-  const mapa = Object.fromEntries(partes.map((p) => [p.type, p.value]));
-  return `${mapa.year}-${mapa.month}-${mapa.day}`;
+  return dataHoraNoFuso(new Date(valor), timeZone)?.data || "";
 }
 function agendaFormPadrao(intervaloMin: number): AgendaForm {
   return {
@@ -409,7 +388,7 @@ function agendaFormPadrao(intervaloMin: number): AgendaForm {
     pagamentoValor: "",
     modalidade: "aprovacao",
     antecedenciaHoras: 2,
-    timezone: "America/Sao_Paulo",
+    timezone: FUSO_PADRAO_AGENDA,
     cor: "verde",
   };
 }
@@ -543,7 +522,7 @@ export function AgendaDayBoard({
     duracao_padrao_atendimento_min: 30,
     duracoes_atendimento_min: {},
   });
-  const [data, setData] = useState(dataIso(new Date()));
+  const [data, setData] = useState(hojeAgenda());
   const [filtro, setFiltro] = useState("todas");
   const [visao, setVisao] = useState<VisaoAgenda>("dia");
   const [filtroProf, setFiltroProf] = useState("");
@@ -560,6 +539,9 @@ export function AgendaDayBoard({
   }, []);
   const [carregando, setCarregando] = useState(true);
   const [erroCarregamento, setErroCarregamento] = useState("");
+  const chaveCarga = JSON.stringify([clinicaPermissao, mode, data, visao, revisao]);
+  const [chaveCarregada, setChaveCarregada] = useState("");
+  const gradePronta = chaveCarregada === chaveCarga && !carregando && !erroCarregamento;
   const [agendaModal, setAgendaModal] = useState<{ id?: string; form: AgendaForm } | null>(null);
   const [eventoModal, setEventoModal] = useState<{
     agenda: AgendaDb;
@@ -592,6 +574,7 @@ export function AgendaDayBoard({
   const carregar = useCallback(async () => {
     const versao = ++controleCarga.current;
     setCarregando(true);
+    setErroCarregamento("");
     try {
       // A agenda usa a mesma clínica ativa escolhida pela Recepção e pela fila.
       const { data: cidSelecionada, error: contextoError } = await bancoAgenda.rpc(
@@ -733,7 +716,7 @@ export function AgendaDayBoard({
           ? configResp.data
           : { duracao_padrao_atendimento_min: 30, duracoes_atendimento_min: {} },
       );
-      setErroCarregamento("");
+      setChaveCarregada(chaveCarga);
     } catch (error) {
       if (versao !== controleCarga.current) return;
       console.error("Erro ao carregar agenda única:", error);
@@ -743,7 +726,7 @@ export function AgendaDayBoard({
     } finally {
       if (versao === controleCarga.current) setCarregando(false);
     }
-  }, [data, visao, mode]);
+  }, [data, visao, mode, chaveCarga]);
 
   const invalidarCarga = useCallback(() => {
     controleCarga.current++;
@@ -893,7 +876,7 @@ export function AgendaDayBoard({
             modalidade: f.modalidade,
             pagamento_valor: f.modalidade === "pagamento" ? Number(f.pagamentoValor) : undefined,
             antecedencia_horas: f.antecedenciaHoras,
-            timezone: f.timezone.trim() || "America/Sao_Paulo",
+            timezone: f.timezone.trim() || FUSO_PADRAO_AGENDA,
             cor: f.cor,
           },
         },
@@ -930,14 +913,15 @@ export function AgendaDayBoard({
   }
 
   function abrirHorario(agenda: AgendaDb, hora: string, existente?: AgendamentoDb) {
+    if (!gradePronta) return;
     if (mode === "banho") {
       if (existente) {
         void navigate({ to: "/banho-tosa", hash: "fila" });
       } else {
-        const query = new URLSearchParams({
-          profissional: agenda.responsavel,
-          inicio: `${data}T${hora}`,
-        });
+        const inicio = instanteDaAgenda(data, hora, agenda.timezone);
+        if (!inicio)
+          return void toast.error("Não foi possível interpretar esse horário. Escolha outro.");
+        const query = new URLSearchParams({ profissional: agenda.responsavel, inicio });
         window.location.assign(`/banho-tosa?${query.toString()}#novo`);
       }
       return;
@@ -1252,7 +1236,7 @@ export function AgendaDayBoard({
     eventos.filter((e) => {
       const agenda = agendasPorId.get(e.agenda_id);
       return (
-        dataNoFuso(e.inicio, agenda?.timezone || "America/Sao_Paulo") === modoData &&
+        dataNoFuso(e.inicio, agenda?.timezone || FUSO_PADRAO_AGENDA) === modoData &&
         (filtro === "todas" || filtro === e.agenda_id) &&
         (!filtroProf || filtroProf === profissionalDe(e)) &&
         (!filtroTipo || filtroTipo === e.tipo) &&
@@ -1261,9 +1245,14 @@ export function AgendaDayBoard({
     });
   const eventosHoje = filtrados(data);
   function abrirEvento(e: AgendamentoDb) {
+    if (!gradePronta) return;
     const agenda = agendasPorId.get(e.agenda_id);
     if (agenda) abrirHorario(agenda, horaNoFuso(e.inicio, agenda.timezone), e);
     else if (mode === "banho") void navigate({ to: "/banho-tosa", hash: "fila" });
+    else
+      toast.error(
+        "Agenda não disponível neste painel. Confira com o responsável antes de criar outro horário.",
+      );
   }
   const acoes = eventoModal?.evento
     ? acoesAgenda(statusClinico(eventoModal.evento), eventoModal.evento.inicio, relogio)
@@ -1280,7 +1269,7 @@ export function AgendaDayBoard({
     aoMudarSelecao?.();
   }
   function agendarLivre() {
-    if (carregando || erroCarregamento) return;
+    if (!gradePronta) return;
     const agenda = agendasVisiveis.find(
       (a) =>
         (!filtroProf || filtroProf === (a.responsavel || "Sem responsável")) &&
@@ -1297,13 +1286,19 @@ export function AgendaDayBoard({
 
   if (carregando && !agendas.length)
     return (
-      <section className="rounded-2xl border bg-white p-6 text-sm text-muted-foreground">
+      <section
+        data-oricse-estado-grade="carregando"
+        className="rounded-2xl border bg-white p-6 text-sm text-muted-foreground"
+      >
         Carregando agenda única da clínica...
       </section>
     );
 
   return (
-    <section className="min-w-0 w-full rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
+    <section
+      data-oricse-estado-grade={gradePronta ? "pronta" : erroCarregamento ? "erro" : "carregando"}
+      className="min-w-0 w-full rounded-2xl border bg-white p-4 shadow-sm sm:p-5"
+    >
       {erroCarregamento && (
         <div
           role="alert"
@@ -1456,11 +1451,11 @@ export function AgendaDayBoard({
           type="button"
           onClick={agendarLivre}
           data-oricse-agendar-livre={
-            !carregando && agendasVisiveis.some((a) => slots(a).some((h) => !ocupa(a, h)))
+            gradePronta && agendasVisiveis.some((a) => slots(a).some((h) => !ocupa(a, h)))
               ? "true"
               : undefined
           }
-          disabled={carregando || !!erroCarregamento}
+          disabled={!gradePronta}
           className="ml-auto inline-flex min-h-10 items-center gap-1 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground disabled:opacity-40"
         >
           <Plus size={16} /> Agendar
@@ -1479,7 +1474,7 @@ export function AgendaDayBoard({
           <button
             type="button"
             onClick={() => {
-              setData(dataIso(new Date()));
+              setData(hojeAgenda());
               aoMudarSelecao?.();
             }}
             className="rounded-lg px-1 text-primary"
@@ -1514,12 +1509,18 @@ export function AgendaDayBoard({
           <ChevronRight size={19} />
         </button>
       </div>
-      {visao !== "dia" ? (
+      {!gradePronta ? (
+        !erroCarregamento && (
+          <p role="status" className="mt-4 text-sm text-muted-foreground">
+            Verificando a agenda deste período...
+          </p>
+        )
+      ) : visao !== "dia" ? (
         <AgendaCalendarioPeriodo
           visao={visao}
           dias={diasDaVisaoAgenda(data, visao).map((d) => ({
             data: d,
-            atual: d === dataIso(new Date()),
+            atual: d === hojeAgenda(),
             foraMes: visao === "mes" && d.slice(0, 7) !== data.slice(0, 7),
             abrir: () => {
               setData(d);
@@ -1531,7 +1532,7 @@ export function AgendaDayBoard({
               titulo: nomesPaciente(e),
               hora: horaNoFuso(
                 e.inicio,
-                agendasPorId.get(e.agenda_id)?.timezone || "America/Sao_Paulo",
+                agendasPorId.get(e.agenda_id)?.timezone || FUSO_PADRAO_AGENDA,
               ),
               estado: estadoEvento(e),
               abrir: () => abrirEvento(e),
@@ -1565,8 +1566,9 @@ export function AgendaDayBoard({
               <ul className="mt-2 grid max-h-52 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
                 {eventosHoje.map((e) => {
                   const status = estadoEvento(e);
+                  const agenda = agendasPorId.get(e.agenda_id);
                   const prox =
-                    mode !== "banho" && e.tipo !== TIPO_BLOQUEIO
+                    mode !== "banho" && e.tipo !== TIPO_BLOQUEIO && agenda
                       ? acoesAgenda(statusClinico(e), e.inicio, relogio)
                       : null;
                   return (
@@ -1574,18 +1576,25 @@ export function AgendaDayBoard({
                       <button
                         type="button"
                         onClick={() => abrirEvento(e)}
-                        className="w-full text-left text-xs hover:text-primary"
+                        disabled={mode !== "banho" && !agendasPorId.has(e.agenda_id)}
+                        className="w-full text-left text-xs hover:text-primary disabled:cursor-default"
                       >
                         <strong>
                           {horaNoFuso(
                             e.inicio,
-                            agendasPorId.get(e.agenda_id)?.timezone || "America/Sao_Paulo",
+                            agendasPorId.get(e.agenda_id)?.timezone || FUSO_PADRAO_AGENDA,
                           )}{" "}
                           · {nomesPaciente(e)}
                         </strong>
                         <span className="block text-muted-foreground">
                           {e.tipo} · {profissionalDe(e)} · {status}
                         </span>
+                        {mode !== "banho" && !agendasPorId.has(e.agenda_id) && (
+                          <span className="block text-amber-900">
+                            Agenda não disponível neste painel. Confira com o responsável antes de
+                            criar outro horário.
+                          </span>
+                        )}
                       </button>
                       {prox && (
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
