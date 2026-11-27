@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  aplicarReferenciasDoLaboratorioLab,
+  atualizarFaixaEtariaLab,
+  faixaEtariaLaboratorial,
+  referenciasDaIdadeLab,
   criarLinhasLab,
+  resultadosConfirmadosLab,
+  sugerirReferenciaLab,
   especieLaboratorial,
   preencherReferenciasLab,
   salvarExameLabSchema,
@@ -137,4 +143,91 @@ test("rejeita datas inválidas e painel vazio ou duplicado; aceita resultado qua
   );
   assert.equal(salvarExameLabSchema.safeParse({ ...entrada, data: "2025-02-29" }).success, false);
   assert.equal(salvarExameLabSchema.safeParse({ ...entrada, data: "2099-01-01" }).success, false);
+});
+
+test("o formulário sugere referências distintas para cão e gato sem depender de laboratório", () => {
+  const painel = criarLinhasLab("bioquimico");
+  const cao = painel.map((l) => sugerirReferenciaLab(l, "Cachorro", "12-meses-ou-mais"));
+  const gato = painel.map((l) => sugerirReferenciaLab(l, "Gato", "12-meses-ou-mais"));
+  assert.ok(cao.every((l) => l.referencia && l.origemReferencia === "sugestao"));
+  assert.ok(gato.every((l) => l.referencia && l.origemReferencia === "sugestao"));
+  assert.notEqual(cao[0].referencia, gato[0].referencia);
+  assert.equal(cao.find((l) => l.parametroId === "ast")?.referencia, "21 – 45");
+  assert.equal(gato.find((l) => l.parametroId === "ast")?.referencia, "26 – 43");
+  assert.ok(
+    criarLinhasLab("hemograma").some(
+      (l) => sugerirReferenciaLab(l, "Gato", "12-meses-ou-mais").referencia,
+    ),
+  );
+  assert.ok(painel.every((l) => !sugerirReferenciaLab(l, "Outra", "12-meses-ou-mais").referencia));
+  assert.equal(
+    sugerirReferenciaLab({ ...painel[0], unidade: "mmol/L" }, "Cachorro", "12-meses-ou-mais")
+      .referencia,
+    "",
+  );
+  assert.equal(
+    sugerirReferenciaLab(
+      { ...painel[0], parametroId: "personalizado-ureia" },
+      "Cachorro",
+      "12-meses-ou-mais",
+    ).referencia,
+    "",
+  );
+});
+
+test("faixa do laudo prevalece; sugestões ficam fora do prontuário sem conferência", () => {
+  const linhas = criarLinhasLab("bioquimico").map((l) =>
+    sugerirReferenciaLab({ ...l, valor: "1" }, "Gato", "12-meses-ou-mais"),
+  );
+  linhas[1] = { ...linhas[1], referencia: "manual", origemReferencia: "manual" };
+  const ajustadas = aplicarReferenciasDoLaboratorioLab(linhas, [
+    { parametroId: "ureia", referencia: "8 – 15", unidade: "mg/dL" },
+    { parametroId: "creatinina", referencia: "0,8 – 1,7", unidade: "mg/dL" },
+    { parametroId: "ast", referencia: "20 – 40", unidade: "mmol/L" },
+  ]);
+  assert.equal(ajustadas[0].referencia, "8 – 15");
+  assert.equal(ajustadas[1].referencia, "manual");
+  assert.equal(ajustadas[2].origemReferencia, "sugestao");
+  assert.deepEqual(
+    resultadosConfirmadosLab(ajustadas.slice(0, 3), false).map((l) => l.referencia),
+    ["8 – 15", "manual", ""],
+  );
+  assert.deepEqual(
+    resultadosConfirmadosLab(ajustadas.slice(0, 3), true).map((l) => l.referencia),
+    ["8 – 15", "manual", "26 – 43"],
+  );
+});
+
+test("idade na data do exame impede sugestão de adulto para filhotes e idade desconhecida", () => {
+  const linha = criarLinhasLab("bioquimico")[0];
+  assert.equal(faixaEtariaLaboratorial("2026-01-08", "2027-01-07"), "menos-de-12-meses");
+  assert.equal(faixaEtariaLaboratorial("2026-01-08", "2027-01-08"), "12-meses-ou-mais");
+  assert.equal(faixaEtariaLaboratorial("2024-02-29", "2025-02-28"), "12-meses-ou-mais");
+  assert.equal(faixaEtariaLaboratorial("2026-01-08", "2026-01-07"), null);
+  assert.equal(faixaEtariaLaboratorial("2025-02-29", "2026-01-07"), null);
+  assert.equal(faixaEtariaLaboratorial(null, "2026-01-07"), null);
+  for (const especie of ["Cachorro", "Gato"] as const) {
+    assert.equal(sugerirReferenciaLab(linha, especie, "menos-de-12-meses").referencia, "");
+    assert.equal(sugerirReferenciaLab(linha, especie, null).referencia, "");
+  }
+});
+
+test("configurar uma idade não altera a outra nem apaga referências legadas", () => {
+  const base = { parametroId: "ureia", unidade: "mg/dL", referencia: "10 – 20" };
+  const adulto = atualizarFaixaEtariaLab([base], [base], "12-meses-ou-mais");
+  const ambos = atualizarFaixaEtariaLab(
+    adulto,
+    [{ ...base, referencia: "8 – 15" }],
+    "menos-de-12-meses",
+  );
+  assert.deepEqual(referenciasDaIdadeLab(ambos, null), []);
+  assert.equal(referenciasDaIdadeLab(ambos, "12-meses-ou-mais")[0]?.referencia, "10 – 20");
+  assert.equal(referenciasDaIdadeLab(ambos, "menos-de-12-meses")[0]?.referencia, "8 – 15");
+  const atualizadas = atualizarFaixaEtariaLab(
+    ambos,
+    [{ ...base, referencia: "11 – 20" }],
+    "12-meses-ou-mais",
+  );
+  assert.equal(atualizadas.find((r) => !r.faixaEtaria)?.referencia, "10 – 20");
+  assert.equal(referenciasDaIdadeLab(atualizadas, "menos-de-12-meses")[0]?.referencia, "8 – 15");
 });

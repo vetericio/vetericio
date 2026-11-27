@@ -343,6 +343,18 @@ export function avaliarExame(valor: string, referencia: string): SituacaoExame {
   }
 }
 
+/** Sugestão de digitação, não representa o laboratório escolhido nem substitui o laudo. */
+export function referenciaSugeridaCatalogo(
+  id: string,
+  unidade: string,
+  especie: "Cachorro" | "Gato",
+): string {
+  const parametro = [...PADRAO.hemograma, ...PADRAO.bioquimico].find((p) => p.id === id);
+  if (!parametro || normalizar(unidade) !== normalizar(parametro.unidade)) return "";
+  const faixas = especie === "Cachorro" ? REFERENCIAS_CACHORRO_PADRAO : REFERENCIAS_GATO_PADRAO;
+  return faixas[chaveExame(parametro)] ?? "";
+}
+
 /** Faixas já presentes no ORICSE, somente para a origem nominal confirmada no catálogo. */
 export function referenciaDoLaudoCatalogado(
   id: string,

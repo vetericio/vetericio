@@ -3,6 +3,7 @@ import {
   criarExamesPadrao,
   numeroExame,
   referenciaDoLaudoCatalogado,
+  referenciaSugeridaCatalogo,
 } from "./exames-laboratoriais-catalogo";
 import { diaNoFuso } from "./relatorios";
 
@@ -14,6 +15,27 @@ export const PAINEIS_LAB = {
   outros: "Outro painel",
 } as const;
 export type EspecieLab = "Cachorro" | "Gato" | "Outra";
+export type FaixaEtariaLab = "menos-de-12-meses" | "12-meses-ou-mais";
+
+// Calcula a idade na data do exame (inclusive para registros retroativos).
+export function faixaEtariaLaboratorial(
+  nascimento: string | null | undefined,
+  dataExame: string,
+): FaixaEtariaLab | null {
+  function diaValido(data: string | null | undefined): data is string {
+    if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return false;
+    const d = new Date(data + "T00:00:00Z");
+    return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === data;
+  }
+  if (!diaValido(nascimento) || !diaValido(dataExame) || nascimento > dataExame) return null;
+  const [ano, mes, dia] = nascimento.split("-").map(Number);
+  const ultimoDiaDoMes = new Date(Date.UTC(ano + 1, mes, 0)).getUTCDate();
+  const aniversario = new Date(Date.UTC(ano + 1, mes - 1, Math.min(dia, ultimoDiaDoMes)))
+    .toISOString()
+    .slice(0, 10);
+  return dataExame >= aniversario ? "12-meses-ou-mais" : "menos-de-12-meses";
+}
+
 export type LinhaLab = {
   parametroId: string;
   nome: string;
@@ -35,6 +57,25 @@ export type ExameLab = {
   temPdf: boolean;
 };
 export type ReferenciaLab = Pick<LinhaLab, "parametroId" | "unidade" | "referencia">;
+export type ReferenciaEtariaLab = ReferenciaLab & { faixaEtaria?: FaixaEtariaLab };
+
+export function referenciasDaIdadeLab(
+  referencias: ReferenciaEtariaLab[],
+  faixaEtaria: FaixaEtariaLab | null,
+) {
+  return faixaEtaria ? referencias.filter((r) => r.faixaEtaria === faixaEtaria) : [];
+}
+
+export function atualizarFaixaEtariaLab(
+  anteriores: ReferenciaEtariaLab[],
+  novas: ReferenciaLab[],
+  faixaEtaria: FaixaEtariaLab,
+): ReferenciaEtariaLab[] {
+  return [
+    ...anteriores.filter((r) => r.faixaEtaria !== faixaEtaria),
+    ...novas.map((r) => ({ ...r, faixaEtaria })),
+  ];
+}
 export const LABORATORIOS_ORIGEM = ["LabNet", "DiagVet"] as const;
 export const normalizarLaboratorio = (texto: string) =>
   texto
@@ -110,6 +151,71 @@ export function preencherReferenciasLab(
         ? ""
         : referenciaDoLaudoCatalogado(linha.parametroId, linha.unidade, especie, laboratorio)),
   }));
+}
+
+export type LinhaLabRascunho = LinhaLab & {
+  origemReferencia?: "sugestao" | "laboratorio" | "manual";
+};
+
+// Complementa o catálogo já adotado no ORICSE. Estas faixas não identificam
+// o método do laudo; só são guardadas no exame após conferência explícita.
+// UNESP/FMVZ (bioquímica, proteínas em soro e eletrólitos):
+// https://www.fmvz.unesp.br/Home/ensino/departamentos/clinicaveterinaria/profreginatakahira/valref.pdf
+// Relação A/G felina: Cornell AHDC, Cobas 501, soro:
+// https://www.vet.cornell.edu/animal-health-diagnostic-center/laboratories/clinical-pathology/reference-intervals/chemistry-cobas
+const sugestoesComplementares: Record<string, [string, string, string]> = {
+  ast: ["U/L", "21 – 45", "26 – 43"],
+  "fosfatase-alcalina": ["U/L", "20 – 156", "25 – 93"],
+  ggt: ["U/L", "1,2 – 6,4", "1,3 – 5,1"],
+  "proteina-total": ["g/dL", "", "5,40 – 7,80"],
+  albumina: ["g/dL", "", "2,10 – 3,30"],
+  globulina: ["g/dL", "", "2,60 – 5,10"],
+  fosforo: ["mg/dL", "", "4,5 – 8,1"],
+  "relacao-ag": ["", "", "0,8 – 1,5"],
+};
+
+export function sugerirReferenciaLab(
+  linha: LinhaLabRascunho,
+  especie: EspecieLab,
+  faixaEtaria: FaixaEtariaLab | null,
+): LinhaLabRascunho {
+  if (
+    faixaEtaria !== "12-meses-ou-mais" ||
+    especie === "Outra" ||
+    linha.parametroId.startsWith("personalizado-")
+  )
+    return linha;
+  const complemento = sugestoesComplementares[linha.parametroId];
+  const referencia =
+    referenciaSugeridaCatalogo(linha.parametroId, linha.unidade, especie) ||
+    (complemento && unidadeComparavel(linha.unidade) === unidadeComparavel(complemento[0])
+      ? complemento[especie === "Cachorro" ? 1 : 2]
+      : "");
+  return referencia ? { ...linha, referencia, origemReferencia: "sugestao" } : linha;
+}
+
+export function aplicarReferenciasDoLaboratorioLab(
+  linhas: LinhaLabRascunho[],
+  referencias: ReferenciaLab[],
+): LinhaLabRascunho[] {
+  const porChave = new Map(referencias.map((r) => [chaveLinha(r), r.referencia]));
+  return linhas.map((l) => {
+    if (l.origemReferencia === "manual") return l;
+    const referencia = porChave.get(chaveLinha(l));
+    return referencia ? { ...l, referencia, origemReferencia: "laboratorio" } : l;
+  });
+}
+
+export function resultadosConfirmadosLab(
+  linhas: LinhaLabRascunho[],
+  conferiuSugestoes: boolean,
+): LinhaLab[] {
+  return linhas
+    .filter((l) => l.valor.trim())
+    .map(({ origemReferencia, ...l }) => ({
+      ...l,
+      referencia: origemReferencia === "sugestao" && !conferiuSugestoes ? "" : l.referencia,
+    }));
 }
 
 type PontoLab = {
@@ -218,6 +324,7 @@ export const salvarExameLabSchema = acessoLabSchema
     "Um mesmo parâmetro não pode aparecer duas vezes no painel.",
   );
 export const referenciasLabSchema = acessoLabSchema.extend({
+  data: dataSchema,
   laboratorio: texto(120).min(1),
   painel: z.enum(PaineisLab),
 });
