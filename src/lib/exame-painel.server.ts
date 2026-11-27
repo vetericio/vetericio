@@ -4,7 +4,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { contaDemoAlvorada } from "./demo-alvorada";
 import { exigirPermissaoClinica } from "./permissao-clinica.server";
 import {
+  atualizarFaixaEtariaLab,
   criarLinhasLab,
+  faixaEtariaLaboratorial,
+  referenciasDaIdadeLab,
   especieLaboratorial,
   normalizarLaboratorio,
   unidadeComparavel,
@@ -12,6 +15,7 @@ import {
   type ExameLab,
   type LinhaLab,
   type ReferenciaLab,
+  type ReferenciaEtariaLab,
 } from "./exame-painel";
 
 // O schema da migração é mais novo que os tipos gerados. Restringir o cliente
@@ -36,7 +40,7 @@ type Gravacao = Acesso &
     ExameLab,
     "id" | "painel" | "data" | "hora" | "laboratorio" | "observacoes" | "resultados" | "temPdf"
   > & { consultaId?: string | null };
-type ConsultaReferencia = Acesso & Pick<ExameLab, "laboratorio" | "painel">;
+type ConsultaReferencia = Acesso & Pick<ExameLab, "laboratorio" | "painel" | "data">;
 const TABELA = "oricse_exames_laboratoriais";
 const REF = "oricse_referencias_laboratoriais";
 const CAMPOS =
@@ -61,12 +65,17 @@ async function autorizar(a: Acesso, escrita = false, configurar = false) {
     );
   const animal = await supabaseAdmin
     .from("oricse_animais")
-    .select("id,especie")
+    .select("id,especie,nascimento")
     .eq("id", a.animalId)
     .eq("clinica_id", a.clinicaId)
     .maybeSingle();
   if (animal.error || !animal.data) throw new Error("Animal não encontrado nesta clínica.");
-  return { userId: user.id, especie: especieLaboratorial(animal.data.especie), demo };
+  return {
+    userId: user.id,
+    especie: especieLaboratorial(animal.data.especie),
+    nascimento: animal.data.nascimento,
+    demo,
+  };
 }
 
 async function nomeAutor(userId: string) {
@@ -139,14 +148,16 @@ export async function listarExamesLabServidor(a: Acesso) {
     exames,
     laboratorios: [...new Set((labs.data || []).map((l) => l.laboratorio))],
     especie: contexto.especie,
+    nascimento: contexto.nascimento,
     autor,
     demo: contexto.demo,
   };
 }
 
 export async function listarReferenciasLabServidor(a: ConsultaReferencia) {
-  const { especie } = await autorizar(a);
-  if (especie === "Outra")
+  const { especie, nascimento } = await autorizar(a);
+  const faixaEtaria = faixaEtariaLaboratorial(nascimento, a.data);
+  if (especie === "Outra" || !faixaEtaria)
     return { especie, referencias: [] as ReferenciaLab[], cadastrada: false };
   const { data, error } = await lab()
     .from(REF)
@@ -157,13 +168,20 @@ export async function listarReferenciasLabServidor(a: ConsultaReferencia) {
     .eq("painel", a.painel)
     .maybeSingle();
   if (error) throw new Error("Não foi possível carregar as referências deste laboratório.");
-  return { especie, referencias: (data?.referencias ?? []) as ReferenciaLab[], cadastrada: !!data };
+  const referencias = referenciasDaIdadeLab(
+    (data?.referencias ?? []) as ReferenciaEtariaLab[],
+    faixaEtaria,
+  );
+  return { especie, referencias, cadastrada: Boolean(referencias.length) };
 }
 
 export async function salvarReferenciasLabServidor(
   a: ConsultaReferencia & { referencias: ReferenciaLab[] },
 ) {
-  const { especie, userId } = await autorizar(a, true, true);
+  const { especie, userId, nascimento } = await autorizar(a, true, true);
+  const faixaEtaria = faixaEtariaLaboratorial(nascimento, a.data);
+  if (!faixaEtaria)
+    throw new Error("Confira a data de nascimento antes de cadastrar faixas por idade.");
   if (especie === "Outra")
     throw new Error("Para esta espécie, registre a referência diretamente no resultado.");
   const parametros = criarLinhasLab(a.painel);
@@ -177,22 +195,44 @@ export async function salvarReferenciasLabServidor(
       .size !== referencias.length
   )
     throw new Error("Confira referências duplicadas.");
-  const { error } = await lab()
-    .from(REF)
-    .upsert(
-      {
-        clinica_id: a.clinicaId,
-        laboratorio_chave: normalizarLaboratorio(a.laboratorio),
-        laboratorio: a.laboratorio,
-        especie,
-        painel: a.painel,
-        referencias,
-        atualizado_por: userId,
-        atualizado_em: new Date().toISOString(),
-      },
-      { onConflict: "clinica_id,laboratorio_chave,especie,painel" },
+  const chave = {
+    clinica_id: a.clinicaId,
+    laboratorio_chave: normalizarLaboratorio(a.laboratorio),
+    especie,
+    painel: a.painel,
+  };
+  const tabela = lab().from(REF);
+  const anterior = await tabela.select("referencias,atualizado_em").match(chave).maybeSingle();
+  if (anterior.error) throw new Error("Não foi possível consultar as faixas já cadastradas.");
+  const combinadas = atualizarFaixaEtariaLab(
+    (anterior.data?.referencias ?? []) as ReferenciaEtariaLab[],
+    referencias,
+    faixaEtaria,
+  );
+  if (combinadas.length > 60)
+    throw new Error(
+      "O cadastro atingiu o limite de 60 faixas. Nenhuma faixa anterior foi alterada.",
     );
-  if (error) throw new Error("Não foi possível salvar as referências para este laboratório.");
+  const dados = {
+    laboratorio: a.laboratorio,
+    referencias: combinadas,
+    atualizado_por: userId,
+    atualizado_em: new Date().toISOString(),
+  };
+  if (anterior.data) {
+    const atualizado = await tabela
+      .update(dados)
+      .match(chave)
+      .eq("atualizado_em", anterior.data.atualizado_em)
+      .select("atualizado_em")
+      .maybeSingle();
+    if (atualizado.error || !atualizado.data)
+      throw new Error("Não foi possível atualizar as faixas. Recarregue e tente novamente.");
+  } else {
+    const criado = await tabela.insert({ ...chave, ...dados });
+    if (criado.error)
+      throw new Error("Não foi possível salvar as referências para este laboratório.");
+  }
   return { ok: true };
 }
 
