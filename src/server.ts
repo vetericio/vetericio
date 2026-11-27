@@ -181,6 +181,10 @@ export default {
         if (request.method !== "GET") return securityHeaders(new Response(null, { status: 405 }), url.pathname);
         return securityHeaders(await consultarCepNoServidor(url.pathname.slice("/api/cep/".length)), url.pathname);
       }
+      if (url.pathname === "/api/ajuda/manual") {
+        const { baixarManualSistema } = await import("./lib/manual-sistema.server");
+        return securityHeaders(await baixarManualSistema(request), url.pathname);
+      }
       if (url.pathname === "/api/public/clinic-image") {
         if (request.method !== "GET" && request.method !== "HEAD") {
           return securityHeaders(new Response(null, { status: 405, headers: { allow: "GET, HEAD" } }), url.pathname);
