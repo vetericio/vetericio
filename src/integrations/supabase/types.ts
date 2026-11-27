@@ -700,6 +700,7 @@ export type Database = {
           criado_por: string | null
           estoque_atual: number | null
           estoque_minimo: number | null
+          faixas_peso: Json
           id: string
           nome: string
           tipo: string
@@ -716,6 +717,7 @@ export type Database = {
           criado_por?: string | null
           estoque_atual?: number | null
           estoque_minimo?: number | null
+          faixas_peso?: Json
           id?: string
           nome: string
           tipo: string
@@ -732,6 +734,7 @@ export type Database = {
           criado_por?: string | null
           estoque_atual?: number | null
           estoque_minimo?: number | null
+          faixas_peso?: Json
           id?: string
           nome?: string
           tipo?: string
