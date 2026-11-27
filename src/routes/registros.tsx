@@ -14,6 +14,7 @@ import { EvolucaoAnimais } from "@/components/EvolucaoAnimais";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { alteracoesDoRegistro } from "@/lib/ficha";
 import { useRegistros } from "@/hooks/useRegistros";
+import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import {
@@ -71,7 +72,8 @@ function Registros() {
   const { registros, setRegistros, carregado } = useRegistros();
   const finalizar = useFinalizarPlantao();
   const { pode, carregando: conferindoAcesso } = usePermissoes();
-  const podeFinalizarPlantao = !conferindoAcesso && pode("internacao.plantoes") && pode("internacao.registrar");
+  const { plantao } = usePlantaoAtual();
+  const podeFinalizarPlantao = !!plantao && !conferindoAcesso && pode("internacao.plantoes") && pode("internacao.registrar");
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
   const [letraAtiva, setLetraAtiva] = useState<string | null>(null);
@@ -172,13 +174,9 @@ function Registros() {
 
   const finalizarPlantao = () => {
     if (!podeFinalizarPlantao) return;
-    if (registros.length === 0) {
-      toast.info("Não há animais para finalizar o plantão.");
-      return;
-    }
     confirmacao.pedir({
       titulo: "Finalizar o plantão agora?",
-      descricao: `O retrato das ${registros.length} fichas vai para Plantões, mas elas saem da lista ativa. Os alarmes atuais serão encerrados e o bloco de notas será limpo. Confira a passagem dos animais que continuam internados antes de prosseguir.`,
+      descricao: `O turno vai para o histórico. As ${registros.length} fichas, os horários, os alarmes e as anotações ficam na internação.`,
       acao: "Finalizar plantão",
       onConfirmar: finalizar,
     });
@@ -316,7 +314,7 @@ function Registros() {
           </button>
         )}
 
-        {registros.length > 0 && (
+        {plantao && (
           <button
             type="button"
             onClick={finalizarPlantao}

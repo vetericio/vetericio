@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmarAcao, usarConfirmacao } from "@/components/ConfirmarAcao";
 import { usePlantoes } from "@/hooks/usePlantoes";
-import { formatarTodos, rotuloPlantao, type Plantao } from "@/lib/ficha";
+import { formatarEventoPlantao, formatarTodos, rotuloPlantao, type Plantao } from "@/lib/ficha";
 import { nomeArquivoPdf, rotuloPlantaoPdfDe } from "@/lib/plantao";
 import { exportarPdf } from "@/lib/pdf";
 import { importarPlantaoDoPdf, type ResultadoImportacao } from "@/lib/importar-pdf";
@@ -43,6 +43,19 @@ export const Route = createFileRoute("/plantoes")({
   }),
   component: Plantoes,
 });
+
+function complementoDePlantao(p: Plantao) {
+  const eventos = p.eventos ?? [];
+  return [
+    eventos.length ? "Eventos, ocorrências e passagens:\n" + eventos.map(formatarEventoPlantao).join("\n") : "",
+    p.notas?.trim() ? "Notas na passagem:\n" + p.notas.trim() : "",
+  ].filter(Boolean).join("\n\n");
+}
+
+function textoPlantao(p: Plantao) {
+  return [formatarTodos(p.registros, { curvas: p.curvas, anamneses: p.anamneses }), complementoDePlantao(p)]
+    .filter(Boolean).join("\n\n");
+}
 
 function Plantoes() {
   const demoAlvorada = useDemoAlvorada();
@@ -85,10 +98,7 @@ function Plantoes() {
 
   const copiar = async (p: Plantao) => {
     try {
-      await navigator.clipboard.writeText(formatarTodos(p.registros, {
-        ...(p.curvas ? { curvas: p.curvas } : {}),
-        ...(p.anamneses ? { anamneses: p.anamneses } : {}),
-      }));
+      await navigator.clipboard.writeText(textoPlantao(p));
       toast.success("Texto copiado.");
     } catch {
       toast.error("Não foi possível copiar.");
@@ -102,6 +112,7 @@ function Plantoes() {
         ...(p.curvas ? { curvas: p.curvas } : {}),
         ...(p.anamneses ? { anamneses: p.anamneses } : {}),
         legenda: rotuloPlantaoPdfDe(p.data, p.turno),
+        complemento: complementoDePlantao(p),
         arquivo: nomeArquivoPdf(p.data, p.turno),
       });
       toast.success("PDF gerado.");
@@ -117,6 +128,7 @@ function Plantoes() {
         ...(p.curvas ? { curvas: p.curvas } : {}),
         ...(p.anamneses ? { anamneses: p.anamneses } : {}),
         legenda: rotuloPlantaoPdfDe(p.data, p.turno),
+        complemento: complementoDePlantao(p),
         arquivo: nomeArquivoPdf(p.data, p.turno),
         visualizar: true,
       });
@@ -138,6 +150,7 @@ function Plantoes() {
         await exportarPdf(p.registros, {
         ...(p.curvas ? { curvas: p.curvas } : {}),
           legenda: rotuloPlantaoPdfDe(p.data, p.turno),
+        complemento: complementoDePlantao(p),
           arquivo: nomeArquivoPdf(p.data, p.turno),
         });
         await new Promise((r) => setTimeout(r, 400));
@@ -153,20 +166,20 @@ function Plantoes() {
   };
 
   const apagarTodos = () => {
-    if (plantoes.length === 0) {
-      toast.info("Nenhum plantão salvo.");
+    if (!plantoes.some((p) => !p.turnoChave)) {
+      toast.info("Não há plantões importados ou antigos para remover.");
       return;
     }
     confirmacao.pedir({
-      titulo: `Apagar os ${plantoes.length} plantões salvos?`,
+      titulo: "Remover plantões antigos/importados?",
       descricao:
-        "O histórico inteiro sai deste aparelho e não volta. Se quiser guardar antes, use Baixar todos os plantões (PDF).",
+        "Os novos turnos arquivados ficam preservados. Exporte os antigos antes de prosseguir.",
       acao: "Apagar tudo",
       palavra: "APAGAR",
       destrutivo: true,
       onConfirmar: () => {
         const copia = plantoes;
-        setPlantoes([]);
+        setPlantoes((anteriores) => anteriores.filter((p) => p.turnoChave));
         toast.success("Todos os plantões foram apagados.", {
           duration: 6000,
           action: {
@@ -182,6 +195,7 @@ function Plantoes() {
   };
 
   const excluir = (p: Plantao) => {
+    if (p.turnoChave) return;
     confirmacao.pedir({
       titulo: "Excluir este plantão?",
       descricao: `${rotuloPlantao(p)} — ${p.registros.length} animal(is). Você tem 6 segundos para desfazer.`,
@@ -209,7 +223,7 @@ function Plantoes() {
         Plantões salvos ({plantoes.length})
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Todos os plantões ficam guardados neste aparelho.
+        Novos turnos encerrados são arquivados na clínica. Encerrar o turno não encerra a internação.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -241,7 +255,7 @@ function Plantoes() {
           onClick={apagarTodos}
           className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20"
         >
-          Apagar todos os plantões
+          Remover antigos/importados
         </button>
       </div>
 
@@ -308,19 +322,19 @@ function Plantoes() {
                   >
                     Baixar PDF
                   </button>
-                  <button
+                  {!p.turnoChave && <button
                     type="button"
                     onClick={() => excluir(p)}
                     className="rounded-lg bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive hover:bg-destructive/20"
                   >
                     Excluir
-                  </button>
+                  </button>}
                 </div>
               </div>
 
               {aberto === p.id && (
                 <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-secondary p-3 font-sans text-sm leading-relaxed text-foreground">
-                  {formatarTodos(p.registros, p.curvas ? { curvas: p.curvas } : undefined)}
+                  {textoPlantao(p)}
                 </pre>
               )}
             </article>

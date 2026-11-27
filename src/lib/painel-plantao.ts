@@ -192,7 +192,6 @@ export async function programarPlantao(registros: Registro[], turno: TurnoPainel
       const inicio = confirmada
         ? Math.max(
             agora - diaMs,
-            minuto(turno.inicio ?? agora - diaMs),
             minuto(Number.isFinite(criado) ? criado : programada),
             minuto(programada),
           )

@@ -2,6 +2,7 @@ import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { carregarAnamneses, type Anamnese } from "./anamnese";
 import { normalizarNomeMedicamento } from "./nomes";
 import { blocoCurvasDoRegistro, type Curva } from "./curva";
+import type { EventoPlantao } from "./painel-plantao";
 import { resumoRegistro } from "./resumo";
 
 export type Especie = string;
@@ -98,6 +99,16 @@ export function linhaMedicacao(m: Medicacao): string {
 
 
 
+
+export function formatarEventoPlantao(e: EventoPlantao): string {
+  const iso = e.tipo === "dose" ? e.agendado_em : e.registrado_em;
+  const hora = iso && Number.isFinite(Date.parse(iso))
+    ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })
+    : "Hora não informada";
+  const nome = e.tipo === "passagem" ? "Passagem" : e.tipo === "ocorrencia" ? "Ocorrência" :
+    e.estado === "nao_realizada" ? "Não realizada (horário programado)" : "Realização registrada (horário programado)";
+  return `${nome}: ${[e.paciente,e.medicamento,hora,`Lançado por ${e.autor_nome}`,e.texto].filter(Boolean).join(" | ")}`;
+}
 
 /** Bloco de texto das medicações, vazio quando não houver nenhuma. */
 export function blocoMedicacoes(r: Pick<Registro, "medicacoes">): string[] {
@@ -527,6 +538,9 @@ export type Plantao = {
   /** Foto das anamneses do plantão, para histórico/PDF nunca perder dados clínicos. */
   anamneses?: Anamnese[];
   criadoEm: string;
+  turnoChave?: string;
+  eventos?: EventoPlantao[];
+  notas?: string | null;
 };
 
 export function rotuloPlantao(p: Plantao): string {

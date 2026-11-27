@@ -45,7 +45,7 @@ export function Cabecalho({
     "/plantoes",
   ].includes(location.pathname);
   const { registros } = useRegistros();
-  const { plantao, definirTurno, carregado } = usePlantaoAtual();
+  const { plantao, carregado } = usePlantaoAtual();
   const finalizar = useFinalizarPlantao();
   const confirmacao = usarConfirmacao();
   const [iniciarAberto, setIniciarAberto] = useState(false);
@@ -59,8 +59,8 @@ export function Cabecalho({
     confirmacao.pedir({
       titulo: "Finalizar o plantão agora?",
       descricao: quantos
-        ? `O retrato das ${quantos} fichas vai para Plantões, mas elas saem da lista ativa. Os alarmes atuais serão encerrados e o bloco de notas será limpo. Confira a passagem dos animais que continuam internados antes de prosseguir.`
-        : "Não há fichas na lista ativa. Ainda assim, o encerramento desativa os alarmes do plantão e limpa o bloco de notas.",
+        ? `O turno vai para o histórico. As ${quantos} fichas, as programações, os alarmes e o bloco de notas são mantidos na internação.`
+        : "O turno é arquivado, mas os alarmes e o bloco de notas ficam preservados.",
       acao: "Finalizar plantão",
       onConfirmar: finalizar,
     });
@@ -94,13 +94,13 @@ export function Cabecalho({
         {plantaoArea && (
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             {plantao ? rotuloPlantaoAtual(plantao) : dataHoje || "—"}
-            {plantao && podeGerenciarPlantao && (
+            {plantao && podeFinalizarPlantao && (
               <button
                 type="button"
-                onClick={() => definirTurno(null)}
+                onClick={finalizarPlantao}
                 className="ml-2 underline underline-offset-2 hover:text-foreground"
               >
-                alterar
+                finalizar para trocar
               </button>
             )}
           </p>

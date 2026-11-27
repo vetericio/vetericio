@@ -161,3 +161,17 @@ test("avisa de histórico legado recente da mesma ficha sem vincular ou liquidar
   );
   assert.equal(p.doses.length, 10);
 });
+
+test("a troca de plantão conserva a mesma chave da dose ainda pendente do turno anterior", async () => {
+  const pendente = "2026-11-28T13:00:00.000Z";
+  const anterior = await programarPlantao([ficha([m])], turno, agora);
+  const novo = turnoDoPainel({
+    dia: turno.dia,
+    turno: "noturno",
+    iniciadoEm: "2026-11-28T21:00:00Z",
+  })!;
+  const proximo = await programarPlantao([ficha([m])], novo, agora);
+  const anteriorChave = anterior.doses.find((d) => d.horario === pendente)?.chave;
+  assert.ok(anteriorChave);
+  assert.equal(proximo.doses.find((d) => d.horario === pendente)?.chave, anteriorChave);
+});
