@@ -1,10 +1,10 @@
 import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
 import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
-import { idAnimalDaFicha, mostrarEnderecoDaFichaNoHost, slugEnderecoFichaAnimal } from "@/lib/endereco-ficha-animal";
+import { idAnimalDaFicha, slugEnderecoFichaAnimal } from "@/lib/endereco-ficha-animal";
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowRight,
@@ -30,7 +30,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FotoAnimalDrive } from "@/components/animal/FotoAnimalDrive";
 import { ComandaAtendimento } from "@/components/ComandaAtendimento";
@@ -51,6 +51,8 @@ import { enviarAnexoPortal } from "@/lib/drive.functions";
 import { PORTAL_PDF_MAX_BYTES } from "@/lib/drive-storage";
 import { registrarRetornoClinico } from "@/lib/crm-retornos.functions";
 import { calcularDataRetorno, formatarDataRetorno, OPCOES_DIAS_RETORNO } from "@/lib/crm-prazos-retorno";
+
+import { ehRegistroConsulta, resumirConsulta } from "@/lib/resumo-consulta";
 
 export const Route = createFileRoute("/animal")({ component: FichaAnimalLegada });
 
@@ -117,6 +119,8 @@ type Registro = {
   data: string;
   criadoEm: string;
   subtipo?: string;
+  dados?: unknown;
+  status?: string;
   autorId?: string;
   autorNome?: string;
   autorCrmv?: string;
@@ -302,12 +306,11 @@ function registroPreventivo(linha: VacinaPortal | VermifugoPortal): Registro {
 
 function FichaAnimalLegada() {
   const busca = useSearch({ strict: false }) as { animalId?: unknown };
-  return <AnimalFicha key={typeof busca.animalId === "string" ? busca.animalId : ""} atualizarEndereco />;
+  return <AnimalFicha key={typeof busca.animalId === "string" ? busca.animalId : ""} />;
 }
 
-async function slugDaClinicaDaFicha(clinicaId: string, signal?: AbortSignal) {
-  const consulta = supabaseBanco.from("clinicas").select("slug").eq("id", clinicaId);
-  const { data, error } = await (signal ? consulta.abortSignal(signal) : consulta).maybeSingle();
+async function slugDaClinicaDaFicha(clinicaId: string) {
+  const { data, error } = await supabaseBanco.from("clinicas").select("slug").eq("id", clinicaId).maybeSingle();
   return error ? null : slugEnderecoFichaAnimal(data?.slug);
 }
 
@@ -360,15 +363,8 @@ export function FichaAnimalPorClinica({ slugClinica }: { slugClinica: string }) 
   return <AnimalFicha key={animalId} clinicaConfirmada={resultado.clinicaId} />;
 }
 
-function AnimalFicha({
-  atualizarEndereco = false,
-  clinicaConfirmada,
-}: {
-  atualizarEndereco?: boolean;
-  clinicaConfirmada?: string;
-}) {
+function AnimalFicha({ clinicaConfirmada }: { clinicaConfirmada?: string }) {
   const demoAlvorada = useDemoAlvorada();
-  const navigate = useNavigate();
   const busca = useSearch({ strict: false }) as { animalId?: unknown; comandaId?: unknown };
   const animalId = typeof busca.animalId === "string" ? busca.animalId : "";
   const [animal, setAnimal] = useState<Animal | null>(null);
@@ -394,18 +390,7 @@ function AnimalFicha({
           cid = data;
         }
         if (!cid) return;
-        const podePadronizar = atualizarEndereco && idAnimalDaFicha(animalId) &&
-          mostrarEnderecoDaFichaNoHost(window.location.hostname) &&
-          !new URLSearchParams(window.location.search).has("visual_editor");
-        // Nunca usar o endereço novo para trocar a unidade ativa. Se a ficha
-        // legada precisa alinhar a clínica (fluxo existente do Admin), fica no endereço antigo.
-        let correspondeAoContexto = false;
-        if (podePadronizar) {
-          try {
-            const contexto = await supabaseBanco.rpc("oricse_contexto_clinica_atual");
-            correspondeAoContexto = !contexto.error && contexto.data?.[0]?.clinica_id === cid;
-          } catch { /* mantém a rota legada */ }
-        }
+        // Um link antigo continua na mesma rota e mantém o fluxo histórico do Admin.
         if (!vivo) return;
         if (!clinicaConfirmada) {
           const { error: eAtiva } = await (supabaseBanco as any).rpc(
@@ -421,26 +406,6 @@ function AnimalFicha({
         if (error) throw error;
         if (!vivo) return;
         const a = data?.animal;
-        // Resolve o endereço antes de mostrar a tela editável: uma resposta
-        // tardia nunca pode desmontar a ficha com trabalho aberto.
-        if (a && correspondeAoContexto) {
-          try {
-            const limite = typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(1800) : undefined;
-            const slug = await slugDaClinicaDaFicha(cid, limite);
-            if (!vivo) return;
-            if (slug) {
-              await navigate({
-                to: "/$tipo/$slug",
-                params: { tipo: slug, slug: "animal" },
-                search: true,
-                hash: true,
-                replace: true,
-              });
-              return;
-            }
-          } catch { /* fallback para a ficha legada */ }
-        }
-        if (!vivo) return;
         setErroFicha("");
         setAnimal(a ? { ...a, peso: a.peso == null ? "" : String(a.peso) } : null);
         setTutor(data?.tutor || null);
@@ -458,7 +423,7 @@ function AnimalFicha({
     return () => {
       vivo = false;
     };
-  }, [animalId, atualizarEndereco, clinicaConfirmada, navigate]);
+  }, [animalId, clinicaConfirmada]);
   const [aba, setAba] = useState<Aba>(() => {
     const solicitada = typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("aba") : null;
@@ -1956,21 +1921,45 @@ function Info({ rotulo, valor }: { rotulo: string; valor?: string }) {
     </div>
   );
 }
+function CartaoRegistroClinico({
+  registro,
+  mostrarDetalhe = false,
+}: {
+  registro: Registro;
+  mostrarDetalhe?: boolean;
+}) {
+  const resumoId = useId();
+  const consulta = ehRegistroConsulta(registro);
+  const data = formatarData(registro.data);
+  return (
+    <Link
+      to="/consulta"
+      search={{ animalId: registro.animalId, registroId: registro.id } as never}
+      aria-label={`Abrir ${registro.titulo} de ${data}`}
+      aria-describedby={consulta ? resumoId : undefined}
+      className="block min-w-0 rounded-xl border p-3 transition hover:border-primary hover:bg-primary/[0.025] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
+      <div className="text-xs text-muted-foreground">{data}</div>
+      <div className="font-bold">{registro.titulo}</div>
+      {consulta ? (
+        <p id={resumoId} className="mt-1 line-clamp-2 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+          {resumirConsulta(registro)}
+        </p>
+      ) : mostrarDetalhe && registro.detalhe ? (
+        <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
+          {registro.detalhe}
+        </p>
+      ) : null}
+      <div className="mt-1.5 text-xs font-bold text-primary">{consulta ? "Abrir" : "Abrir registro"} →</div>
+    </Link>
+  );
+}
 function ListaMini({ registros, vazio }: { registros: Registro[]; vazio: string }) {
   return registros.length ? (
     <div className="space-y-2">
       {registros.map((r) =>
         r.tipo === "Registros clínicos" ? (
-          <Link
-            key={r.id}
-            to="/consulta"
-            search={{ animalId: r.animalId, registroId: r.id } as never}
-            className="block rounded-xl border p-3 transition hover:border-primary hover:bg-primary/[0.025]"
-          >
-            <div className="text-xs text-muted-foreground">{formatarData(r.data)}</div>
-            <div className="font-bold">{r.titulo}</div>
-            <div className="mt-1 text-[11px] font-bold text-primary">Abrir consulta →</div>
-          </Link>
+          <CartaoRegistroClinico key={r.id} registro={r} />
         ) : (
           <div key={r.id} className="rounded-xl border p-3">
             <div className="flex items-start justify-between gap-2">
@@ -2245,23 +2234,7 @@ function RegistrosClinicos({ animalId, clinicaId, registros }: { animalId: strin
             </div>
             <div className="space-y-2">
               {registros.map((r) => (
-                <Link
-                  key={r.id}
-                  to="/consulta"
-                  search={{ animalId, registroId: r.id } as never}
-                  className="block rounded-xl border p-3 transition hover:border-primary hover:bg-primary/[0.025]"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong>{r.titulo}</strong>
-                    <span className="text-xs text-muted-foreground">{formatarData(r.data)}</span>
-                  </div>
-                  {r.detalhe && (
-                    <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-muted-foreground">
-                      {r.detalhe}
-                    </p>
-                  )}
-                  <div className="mt-2 text-[11px] font-black text-primary">Abrir registro →</div>
-                </Link>
+                <CartaoRegistroClinico key={r.id} registro={r} mostrarDetalhe />
               ))}
             </div>
           </div>

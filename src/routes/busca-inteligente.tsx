@@ -7,7 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CadastroTutor } from "./tutores";
 import { CadastroAnimal } from "./novo-animal";
 import { supabaseBanco } from "@/integrations/supabase/client";
-import { usePermissoes } from "@/hooks/usePermissoes";
+import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
+import { slugParaLinkDaFicha } from "@/lib/endereco-ficha-animal";
 import { lerComandas, saldoComanda } from "@/lib/comandas";
 import { pendenciasDosPets, type FonteCuidados } from "@/lib/portal-pet-care";
 
@@ -48,6 +49,7 @@ type RegistroPreventivo = {
 type Filtro = "todos" | "tutores" | "animais";
 
 const permissoesPesquisa = ["recepcao.cadastros.visualizar", "consultorio.atendimentos"];
+const semAnimais: Animal[] = [];
 function normalizar(valor: unknown) {
   return String(valor ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
@@ -74,7 +76,8 @@ function hojeBrasil() {
 }
 
 function BuscaInteligente() {
-  const { clinicaId, carregando: verificando, adminGlobal, pode, podeAlguma } = usePermissoes();
+  const { clinicaId, clinicaSlug, carregando: verificando, adminGlobal, pode, podeAlguma } = usePermissoes();
+  const podeAbrirFicha = !verificando && podeAlguma(permissoesDaRota("/animal") || []);
   const autorizado = adminGlobal || podeAlguma(permissoesPesquisa);
   const podeFinanceiro = adminGlobal || pode("caixa.comandas") || pode("caixa.financeiro.visualizar");
   const podeConsultar = adminGlobal || pode("consultorio.atendimentos");
@@ -94,7 +97,8 @@ function BuscaInteligente() {
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [tutorSelecionado, setTutorSelecionado] = useState<string | null>(null);
   const [tutores, setTutores] = useState<Tutor[]>([]);
-  const [animais, setAnimais] = useState<Animal[]>([]);
+  const [listaAnimais, setListaAnimais] = useState<{ clinicaId: string; animais: Animal[] } | null>(null);
+  const animais = listaAnimais?.clinicaId === clinicaId ? listaAnimais.animais : semAnimais;
   const [comandas, setComandas] = useState<ComandaResumo[]>([]);
   const [vacinas, setVacinas] = useState<RegistroPreventivo[]>([]);
   const [vermifugos, setVermifugos] = useState<RegistroPreventivo[]>([]);
@@ -115,7 +119,7 @@ function BuscaInteligente() {
     setCarregando(true);
     setErro("");
     setTutores([]);
-    setAnimais([]);
+    setListaAnimais(null);
     setComandas([]);
     setVacinas([]);
     setVermifugos([]);
@@ -149,7 +153,7 @@ function BuscaInteligente() {
         const tutoresAtuais = cadastros.data.tutores as Tutor[];
         const animaisAtuais = cadastros.data.animais as Animal[];
         setTutores(tutoresAtuais);
-        setAnimais(animaisAtuais);
+        setListaAnimais({ clinicaId, animais: animaisAtuais });
         if (podeFinanceiro) {
           const idsDaClinica = new Set(tutoresAtuais.map(t => t.id));
           const locais: ComandaResumo[] = lerComandas()
@@ -312,17 +316,30 @@ function BuscaInteligente() {
         {(filtro === "todos" || filtro === "animais") && <section aria-label="Animais encontrados">
           <h2 className="mb-3 flex items-center gap-2 font-bold"><PawPrint size={19} className="text-primary" /> Animais ({animaisEncontrados.length}{animaisEncontrados.length === 50 ? "+" : ""})</h2>
           <div className="space-y-2">
-            {animaisEncontrados.map(a => (
-              <Link key={a.id} to="/animal" search={{ animalId: a.id } as never}
-                className="flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition hover:border-primary focus-visible:outline-2 focus-visible:outline-primary">
-                <PawPrint className="shrink-0 text-primary" size={22} />
-                <span className="min-w-0 flex-1">
-                  <strong className="block truncate">{a.nome}</strong>
-                  <span className="block truncate text-sm text-muted-foreground">{a.especie || "Espécie não informada"} · {tutorPorId.get(a.tutorId)?.nome || "Tutor não informado"}</span>
-                </span>
-                <ChevronRight className="shrink-0 text-muted-foreground" size={18} />
-              </Link>
-            ))}
+            {animaisEncontrados.map(a => {
+              const slug = slugParaLinkDaFicha({
+                hostname: typeof window === "undefined" ? "" : window.location.hostname,
+                animalId: a.id,
+                clinicaDaLista: listaAnimais?.clinicaId || "",
+                clinicaAtiva: clinicaId,
+                slugAtivo: clinicaSlug,
+                podeAbrirFicha,
+              });
+              const rota = slug
+                ? { to: "/$tipo/$slug" as const, params: { tipo: slug, slug: "animal" } }
+                : { to: "/animal" as const };
+              return (
+                <Link key={a.id} {...rota} search={{ animalId: a.id } as never}
+                  className="flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition hover:border-primary focus-visible:outline-2 focus-visible:outline-primary">
+                  <PawPrint className="shrink-0 text-primary" size={22} />
+                  <span className="min-w-0 flex-1">
+                    <strong className="block truncate">{a.nome}</strong>
+                    <span className="block truncate text-sm text-muted-foreground">{a.especie || "Espécie não informada"} · {tutorPorId.get(a.tutorId)?.nome || "Tutor não informado"}</span>
+                  </span>
+                  <ChevronRight className="shrink-0 text-muted-foreground" size={18} />
+                </Link>
+              );
+            })}
             {!animaisEncontrados.length && <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Nenhum animal encontrado.</p>}
           </div>
         </section>}
