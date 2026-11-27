@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarDays, ChevronRight, Download, FileText, LockKeyhole, Save, Upload } from "lucide-react";
+import { CalendarDays, ChevronRight, Download, FileText, LockKeyhole, Save, Upload, MessageSquareText } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { PadroesDocumentosClinica } from "@/components/PadroesDocumentosClinica";
 import { ConfiguracaoModelosDocumentos } from "@/components/ConfiguracaoModelosDocumentos";
 import { TextosParaTermos } from "@/components/TextosParaTermos";
+import { TextoFinalReceitaClinica } from "@/components/TextoFinalReceitaClinica";
 import { LIMITE_PDF_TERMO, TIPOS_ATENDIMENTO } from "@/lib/configuracoes-clinica";
 import { salvarCopiaPdfPadrao, tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import {
@@ -22,6 +23,7 @@ const categorias = [
   { id: "agenda", titulo: "Agenda", icone: CalendarDays },
   { id: "protecao", titulo: "Assinatura e receituário", icone: LockKeyhole },
   { id: "documentos", titulo: "Termos e documentos", icone: FileText },
+  { id: "texto-final-receita", titulo: "Texto final da receita", icone: MessageSquareText },
   { id: "textos-termos", titulo: "Textos para Termos", icone: FileText },
 ] as const;
 const campo = "mt-1 min-h-11 w-full rounded-lg border bg-background px-3 font-normal disabled:opacity-70";
@@ -75,6 +77,11 @@ function PerfilClinica() {
             {config.podeEditarDocumentos && (
               <div hidden={categoria !== "textos-termos"}>
                 {categoria === "textos-termos" && <TextosParaTermos clinicaId={config.id} />}
+              </div>
+            )}
+            {config.podeEditarDocumentos && (
+              <div hidden={categoria !== "texto-final-receita"}>
+                {categoria === "texto-final-receita" && <TextoFinalReceitaClinica clinicaId={config.id} />}
               </div>
             )}
             {config.podeEditarDocumentos && (
