@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { PERMISSAO_RELATORIOS } from "@/lib/relatorios";
 
 export type PermissaoEfetiva = {
   codigo: string;
@@ -47,6 +48,7 @@ export const PERMISSOES_ROTA: Record<string, string[]> = {
   "/alarmes": ["internacao.registrar"],
   "/pendencias": ["internacao.registrar"],
   "/plantoes": ["internacao.plantoes"],
+  "/relatorios": [PERMISSAO_RELATORIOS],
   "/financeiro": ["caixa.financeiro.visualizar"],
   "/comandas": ["caixa.comandas"],
   "/venda-expressa": ["caixa.comandas", "caixa.financeiro.gerenciar"],

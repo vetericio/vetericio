@@ -57,6 +57,7 @@ type MenuRoute =
   | "/oricstudio"
   | "/venda-expressa"
   | "/orcamento-venda-expressa"
+  | "/relatorios"
   | "/financeiro"
   | "/comandas"
   | "/estoque"
@@ -222,7 +223,7 @@ const areas: AreaMenu[] = [
   {
     titulo: "Relatórios",
     icone: BarChart3,
-    itens: [{ rotulo: "Módulo em preparação", emBreve: true }],
+    itens: [{ to: "/relatorios", rotulo: "Abrir relatórios" }],
   },
   {
     titulo: "RH",
@@ -390,7 +391,8 @@ export function MenuLateral({
           (item) => (item.to === "/crm") ||
             (item.to === "/busca-inteligente" && (adminGlobal || pode("recepcao.cadastros.visualizar") || pode("consultorio.atendimentos"))) ||
             (item.to === "/estoque" && (adminGlobal || pode("estoque.catalogo.visualizar") || pode("estoque.movimentar"))) ||
-            (item.emBreve && !item.permissao) || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
+            (item.emBreve && !item.permissao) ||
+            (item.to === "/relatorios" && (adminGlobal || permissoesDaRota(item.to)?.some(pode))) || item.to === "/oricstudio" || item.to === "/venda-expressa" ||
             (!!item.permissao && (adminGlobal || pode(item.permissao) || (item.to === "/rh" && pode("equipe.pagamentos.gerenciar")) || bloqueadaPeloPlano(item.permissao))),
         );
     // Mostrar títulos de bloco somente quando o usuário pode acessar ao menos um item.
@@ -434,7 +436,7 @@ export function MenuLateral({
             </div>
           );
           const ativo = itens.some(
-            (item) => item.to === location.pathname && (item.to === "/oricstudio" || item.to === "/venda-expressa" || (!!item.permissao && pode(item.permissao))),
+            (item) => item.to === location.pathname && (item.to === "/relatorios" || item.to === "/oricstudio" || item.to === "/venda-expressa" || (!!item.permissao && pode(item.permissao))),
           );
           const abertoGrupo = expandido === area.titulo;
           return (
@@ -678,7 +680,7 @@ export function MenuLateral({
               if (itens.length === 0) return null;
               const Icone = area.icone;
               const ativo = itens.some(
-                (item) => item.to === location.pathname && (item.to === "/oricstudio" || item.to === "/venda-expressa" || (!!item.permissao && pode(item.permissao))),
+                (item) => item.to === location.pathname && (item.to === "/relatorios" || item.to === "/oricstudio" || item.to === "/venda-expressa" || (!!item.permissao && pode(item.permissao))),
               );
               return (
                 <button

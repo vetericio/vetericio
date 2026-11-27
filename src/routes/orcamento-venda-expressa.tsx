@@ -2,11 +2,13 @@ import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, FileDown, ImageDown, Plus, Printer, Send, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import { usePermissoes } from "@/hooks/usePermissoes";
-import { supabaseBanco } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+
+import { salvarOrcamentoRelatorio } from "@/lib/orcamentos-relatorio.functions";
 
 export const Route = createFileRoute("/orcamento-venda-expressa")({ component: OrcamentoVendaExpressa });
 
@@ -32,6 +34,37 @@ function OrcamentoVendaExpressa() {
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [carregando, setCarregando] = useState(false);
   const total = useMemo(() => linhas.reduce((s, l) => s + (produtos.find(p => p.id === l.produtoId)?.valor || 0) * l.quantidade, 0), [linhas, produtos]);
+
+  const [registrando, setRegistrando] = useState(false);
+  const [registro, setRegistro] = useState<{chave:string;id:string}>();
+  const tentativa = useRef<{chave:string;id:string} | undefined>(undefined);
+  const emCurso = useRef(false);
+  const chave = JSON.stringify([clinicaId, linhas, nomeTutor, contatoTutor, observacoes, validade, total]);
+  const codigoRegistrado = registro?.chave === chave ? registro.id : null;
+  async function registrarOrcamento() {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
+    if (!clinicaId || !autorizado || emCurso.current || codigoRegistrado) return;
+    if (!linhas.length || linhas.some(l => !produtos.some(p => p.id === l.produtoId) || !(l.quantidade > 0)) ||
+        !Number.isFinite(total) || total < 0) return void toast.error("Inclua itens e quantidades válidas.");
+    emCurso.current = true;
+    setRegistrando(true);
+    try {
+      if (tentativa.current?.chave !== chave) tentativa.current = { chave, id: crypto.randomUUID() };
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) throw new Error("Entre novamente.");
+      const resposta = await salvarOrcamentoRelatorio({ data:{
+        accessToken:data.session.access_token,clinicaId,id:tentativa.current.id,totalCentavos:Math.round(total*100),
+        validadeDias:Math.max(1,Math.min(365,Math.floor(Number(validade)||7))),
+      }});
+      setRegistro({chave,id:resposta.id});
+      toast.success("Orçamento registrado para acompanhamento.");
+    } catch {
+      toast.error("Não foi possível registrar o orçamento. Confira o acesso e tente novamente.");
+    } finally {
+      emCurso.current = false;
+      setRegistrando(false);
+    }
+  }
 
   useEffect(() => {
     if (!clinicaId || !autorizado) return;
@@ -115,7 +148,7 @@ function OrcamentoVendaExpressa() {
     }
     ctx.fillStyle = "#6b7280"; ctx.font = "18px Arial";
     ctx.fillText("Documento comercial informativo. Não confirma venda, pagamento ou reserva de estoque.", 74, altura - 85);
-    ctx.fillText("Gerado pelo ORICSE", 74, altura - 52);
+    ctx.fillText(codigoRegistrado ? "ORICSE · Orçamento " + codigoRegistrado : "Gerado pelo ORICSE", 74, altura - 52);
     return canvas;
   }
   function exportar(formato: "pdf" | "jpeg") {
@@ -174,7 +207,11 @@ function OrcamentoVendaExpressa() {
       <p className="text-right text-xl font-bold">Total: {moeda(total)}</p>
     </section>
     <label className="block text-sm font-semibold">Observações<textarea className="mt-2 min-h-24 w-full rounded-xl border bg-card p-3" value={observacoes} onChange={e=>setObservacoes(e.target.value)} placeholder="Condições e informações adicionais"/></label>
+    {codigoRegistrado && <p role="status" className="break-all text-sm">Código do orçamento: <strong>{codigoRegistrado}</strong></p>}
     <div className="flex flex-wrap gap-2">
+      <button type="button" disabled={registrando || !linhas.length || !!codigoRegistrado} onClick={()=>void registrarOrcamento()} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-60">
+        {registrando ? "Registrando…" : codigoRegistrado ? "Orçamento registrado" : "Registrar para acompanhamento"}
+      </button>
       <button type="button" onClick={()=>exportar("pdf")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground"><FileDown size={18}/> PDF</button>
       <button type="button" onClick={()=>exportar("jpeg")} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><ImageDown size={18}/> JPEG</button>
       <button type="button" onClick={()=>{const canvas=gerarCanvas();if(canvas){const win=window.open("","_blank");if(!win){toast.error("Permita pop-ups para imprimir.");return;}const imagem=win.document.createElement("img");imagem.alt="Orçamento";imagem.style.width="100%";imagem.onload=()=>{win.focus();win.print();};win.document.body.style.margin="0";win.document.body.appendChild(imagem);imagem.src=canvas.toDataURL("image/jpeg",.94);}}} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><Printer size={18}/> Imprimir</button>
