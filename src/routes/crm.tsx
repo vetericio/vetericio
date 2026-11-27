@@ -348,7 +348,7 @@ function Crm() {
       if (evento.status === "pendente" && evento.origem === "automatico" &&
         ((evento.tipo === "pos_cirurgico" && !String((evento as EventoCrm & {chave_dedupe?:string}).chave_dedupe || "").startsWith("pos_cirurgico:registro:")) ||
          (evento.tipo === "inativo" && !String((evento as EventoCrm & {chave_dedupe?:string}).chave_dedupe || "").startsWith("reativacao:mensal:")))) return false;
-      if (!evento.campanha_id) return true;
+      if (evento.status !== "pendente" || !evento.campanha_id) return true;
       const campanha = campanhaPorId.get(evento.campanha_id);
       if (!campanha) return true;
       if (campanha.status === "pausada" || campanha.status === "encerrada") return false;
@@ -672,6 +672,7 @@ function Crm() {
     </Suspense>}
     {visao === "campanhas" && <Suspense fallback={<div role="status" className="mt-5 rounded-2xl border bg-card p-5">Preparando campanhas...</div>}>
       <Crm360Panel
+        key={clinicaId}
         clinicaId={clinicaId}
         podeCampanhas={adminGlobal || pode("crm.campanhas") || pode("crm.gerenciar")}
         podeOperar={podeOperar}

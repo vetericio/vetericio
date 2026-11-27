@@ -1,6 +1,7 @@
 import { BarChart3, BellRing, CheckCircle2, ClipboardList, Clock3, Megaphone, MessageCircle, PauseCircle, PlayCircle, Plus, Send, Sparkles, Users, XCircle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 import { supabaseBanco } from "@/integrations/supabase/client";
 
@@ -85,7 +86,14 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [filtro, setFiltro] = useState<Filtro>("marketing");
   const [revisandoCampanha, setRevisandoCampanha] = useState(false);
-  const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [selecionadosBrutos, setSelecionados] = useState<string[]>([]);
+  const [clinicaDaBase, setClinicaDaBase] = useState("");
+  const clinicaInicializada = useRef("");
+  const rodadaBase = useRef(0);
+  const contextoAtual = useRef(clinicaId);
+  const mutacaoPermitida = () => !!clinicaId && contextoAtual.current === clinicaId && clinicaDaBase === clinicaId && !carregando;
+  const [paginaPublico, setPaginaPublico] = useState(0);
+  const revisaoBotao = useRef<HTMLButtonElement | null>(null);
   const [nome, setNome] = useState("");
   const [assunto, setAssunto] = useState("");
   const [mensagem, setMensagem] = useState("Olá, {{tutor}}! Temos uma novidade especial para você e seu pet. Fale com a nossa equipe para aproveitar.");
@@ -99,7 +107,8 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   const [eventosCampanhas, setEventosCampanhas] = useState<EventoCampanha[]>([]);
 
   const carregar = useCallback(async () => {
-    if (!clinicaId) return;
+    if (!clinicaId || contextoAtual.current !== clinicaId) return;
+    const rodada = ++rodadaBase.current;
     setCarregando(true);
     const [baseResult, campanhasResult, tarefasResult, eventosResult] = await Promise.all([
       (supabaseBanco as any).rpc("oricse_crm_360_base", { p_clinica_id: clinicaId }),
@@ -107,18 +116,24 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
       (supabaseBanco as any).from("oricse_crm_tarefas").select("*").eq("clinica_id", clinicaId).order("vencimento_em", { ascending: true, nullsFirst: false }).limit(12),
       (supabaseBanco as any).from("oricse_crm_eventos").select("campanha_id,status").eq("clinica_id", clinicaId).not("campanha_id", "is", null),
     ]);
+    if (rodada !== rodadaBase.current || contextoAtual.current !== clinicaId) return;
     setCarregando(false);
     if (baseResult.error || campanhasResult.error || tarefasResult.error || eventosResult.error) {
       toast.error(baseResult.error?.message || campanhasResult.error?.message || tarefasResult.error?.message || eventosResult.error?.message || "Não foi possível carregar o CRM 360.");
       return;
     }
+    setClinicaDaBase(clinicaId);
     setBase(baseResult.data || { tutores: [], animais: [], agenda: [], hotel: [], banho_tosa: [], cobrancas: [] });
     setCampanhas(campanhasResult.data || []);
     setTarefas(tarefasResult.data || []);
     setEventosCampanhas(eventosResult.data || []);
   }, [clinicaId]);
 
-  useEffect(() => { void carregar(); }, [carregar]);
+  useEffect(() => {
+    contextoAtual.current = clinicaId;
+    void carregar();
+    return () => { rodadaBase.current += 1; contextoAtual.current = ""; };
+  }, [carregar, clinicaId]);
 
   const porTutor = useMemo(() => new Map(base.tutores.map((tutor) => [tutor.id, tutor])), [base.tutores]);
   // Número disponível e autorização para campanha são informações distintas.
@@ -131,6 +146,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
     };
   }, [base.tutores]);
   const alvo = useMemo(() => {
+    if (clinicaDaBase !== clinicaId) return [];
     const hoje = Date.now();
     const usadosHotel = new Set(base.hotel.filter((item) => item.status !== "cancelado").map((item) => item.tutor_id).filter(Boolean));
     const usadosBanho = new Set(base.banho_tosa.filter((item) => item.status !== "cancelado").map((item) => item.tutor_id).filter(Boolean));
@@ -153,13 +169,32 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
       }
       return true;
     });
-  }, [base, filtro]);
+  }, [base, filtro, clinicaDaBase, clinicaId]);
+
+  const idsElegiveis = useMemo(() => new Set(alvo.map(tutor => tutor.id)), [alvo]);
+  const selecionados = selecionadosBrutos.filter(id => idsElegiveis.has(id));
+  const quantidadePorPagina = 100;
+  const ultimaPagina = Math.max(0, Math.ceil(alvo.length / quantidadePorPagina) - 1);
+  const paginaExibida = Math.min(ultimaPagina, paginaPublico);
 
   useEffect(() => {
-    // Se a autorização for revogada, retirar imediatamente do público.
-    setSelecionados(alvo.map((tutor) => tutor.id));
-  }, [alvo]);
+    if (clinicaDaBase !== clinicaId || carregando) return;
+    if (clinicaInicializada.current !== clinicaId) {
+      clinicaInicializada.current = clinicaId;
+      setSelecionados(Array.from(idsElegiveis));
+      setPaginaPublico(0);
+      return;
+    }
+    // Atualizar o mesmo filtro só remove quem deixou de ser elegível.
+    // Um destinatário novo ou desmarcado nunca é incluído por atualização da consulta.
+    setSelecionados(lista => lista.filter(id => idsElegiveis.has(id)));
+    setPaginaPublico(pagina => Math.min(pagina, ultimaPagina));
+  }, [carregando, clinicaDaBase, clinicaId, idsElegiveis, ultimaPagina]);
 
+  useEffect(() => { setPaginaPublico(0); }, [filtro, clinicaId]);
+
+  const inicioPagina = paginaExibida * quantidadePorPagina;
+  const fimPagina = Math.min(alvo.length, inicioPagina + quantidadePorPagina);
   const receitaEmAberto = useMemo(() => base.cobrancas.filter((item) => !["pago", "cancelado"].includes(String(item.status).toLowerCase())).reduce((soma, item) => soma + Number(item.valor || 0), 0), [base.cobrancas]);
   const metricasPorCampanha = useMemo(() => {
     const resultado = new Map<string, CampanhaMetricas>();
@@ -184,7 +219,7 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   }
 
   async function publicarCampanha() {
-    if (!podeCampanhas) return;
+    if (!mutacaoPermitida() || !podeCampanhas || publicando) return;
     if (!nome.trim() || !assunto.trim() || !mensagem.trim()) return void toast.error("Dê um nome, assunto e mensagem para a campanha.");
     const elegiveis = selecionados.filter(id => porTutor.get(id)?.autoriza_marketing === true);
     if (!elegiveis.length) return void toast.error("Selecione ao menos um tutor que autorizou campanhas.");
@@ -207,28 +242,31 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
       .insert({ clinica_id: clinicaId, nome: nome.trim(), objetivo, assunto: assunto.trim(), mensagem: mensagem.trim(), canal, status: "rascunho", agendada_para: programacao?.toISOString() || null, metadados: { filtro, selecionados, objetivo, origem: "crm_360" } })
       .select("id")
       .single();
-    if (erroCriar) {
+    if (contextoAtual.current !== clinicaId) return;
+    if (erroCriar || !criada?.id) {
       setPublicando(false);
-      return void toast.error(erroCriar.message);
+      return void toast.error(erroCriar?.message || "Não foi possível confirmar o rascunho da campanha.");
     }
     const { error } = await (supabaseBanco as any).rpc("oricse_crm_campanha_publicar", { p_campanha_id: criada.id, p_destinatarios: destinatarios });
+    if (contextoAtual.current !== clinicaId) return;
     setPublicando(false);
     if (error) return void toast.error(error.message);
     setRevisandoCampanha(false);
     toast.success(programadaNoFuturo ? "Campanha programada para " + dataHoraCompleta(programacao?.toISOString()) + "." : "Campanha ativada para " + destinatarios.length + " tutor(es). Os envios estão na fila CRM.");
     setNome(""); setAssunto(""); setObjetivo("relacionamento"); setAgendadaPara(""); setMensagem("Olá, {{tutor}}! Temos uma novidade especial para você e seu pet. Fale com a nossa equipe para aproveitar.");
     await carregar();
-    if (!programadaNoFuturo) onAbrirFila();
+    if (!programadaNoFuturo && contextoAtual.current === clinicaId) onAbrirFila();
   }
 
   async function alterarStatusCampanha(campanha: Campanha, status: "pronta" | "agendada" | "pausada" | "encerrada") {
-    if (!podeCampanhas) return;
+    if (!mutacaoPermitida() || !podeCampanhas) return;
     setAlterandoCampanha(campanha.id);
     const { error } = await (supabaseBanco as any)
       .from("oricse_crm_campanhas")
       .update({ status, updated_at: new Date().toISOString() })
       .eq("id", campanha.id)
       .eq("clinica_id", clinicaId);
+    if (contextoAtual.current !== clinicaId) return;
     setAlterandoCampanha(null);
     if (error) return void toast.error(error.message);
     toast.success(status === "pausada" ? "Campanha pausada. Ela saiu da operação da equipe." : status === "encerrada" ? "Campanha encerrada." : status === "agendada" ? "Campanha programada novamente." : "Campanha retomada e ativa.");
@@ -236,16 +274,18 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
   }
 
   async function adicionarTarefa() {
-    if (!novaTarefa.trim() || !podeOperar) return;
+    if (!mutacaoPermitida() || !novaTarefa.trim() || !podeOperar) return;
     const { error } = await (supabaseBanco as any).from("oricse_crm_tarefas").insert({ clinica_id: clinicaId, titulo: novaTarefa.trim(), status: "aberta", prioridade: "normal" });
+    if (contextoAtual.current !== clinicaId) return;
     if (error) return void toast.error(error.message);
     setNovaTarefa("");
     await carregar();
   }
 
   async function concluirTarefa(tarefa: Tarefa) {
-    if (!podeOperar) return;
-    const { error } = await (supabaseBanco as any).from("oricse_crm_tarefas").update({ status: tarefa.status === "concluida" ? "aberta" : "concluida", concluida_em: tarefa.status === "concluida" ? null : new Date().toISOString() }).eq("id", tarefa.id);
+    if (!mutacaoPermitida() || !podeOperar) return;
+    const { error } = await (supabaseBanco as any).from("oricse_crm_tarefas").update({ status: tarefa.status === "concluida" ? "aberta" : "concluida", concluida_em: tarefa.status === "concluida" ? null : new Date().toISOString() }).eq("id", tarefa.id).eq("clinica_id", clinicaId);
+    if (contextoAtual.current !== clinicaId) return;
     if (error) return void toast.error(error.message);
     await carregar();
   }
@@ -327,22 +367,29 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
           <span className="rounded-lg border bg-background px-3 py-2 font-semibold">WhatsApp autorizado para campanhas: {totaisWhatsApp.autorizadosCampanhas}</span>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {filtros.map((item) => <button key={item.id} type="button" onClick={() => setFiltro(item.id)} className={`rounded-xl border p-3 text-left transition ${filtro === item.id ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}><p className="text-sm font-black">{item.nome}</p><p className="mt-1 text-xs text-muted-foreground">{item.detalhe}</p></button>)}
+          {filtros.map((item) => <button key={item.id} type="button" onClick={() => setFiltro(item.id)} aria-pressed={filtro === item.id} className={`rounded-xl border p-3 text-left transition ${filtro === item.id ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}><p className="text-sm font-black">{item.nome}</p><p className="mt-1 text-xs text-muted-foreground">{item.detalhe}</p></button>)}
         </div>
 
         <div className="mt-4 rounded-2xl border bg-muted/20 p-3">
           <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-black">{selecionados.length} de {alvo.length} tutor(es) selecionado(s)</p><p className="text-xs text-muted-foreground">Apenas estes contatos receberão esta campanha.</p></div><button type="button" onClick={() => setSelecionados(selecionados.length === alvo.length ? [] : alvo.map((tutor) => tutor.id))} className="text-xs font-bold text-primary">{selecionados.length === alvo.length ? "Limpar" : "Selecionar todos"}</button></div>
           <div className="mt-3 max-h-44 space-y-1 overflow-y-auto pr-1">
-            {alvo.slice(0, 100).map((tutor) => <label key={tutor.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm hover:bg-background"><span className="min-w-0"><span className="block truncate font-semibold">{tutor.nome}</span><span className="block truncate text-xs text-muted-foreground">{tutor.telefone || tutor.outro_telefone || tutor.email || "Sem contato digital"}</span></span><input type="checkbox" checked={selecionados.includes(tutor.id)} onChange={() => alternarTutor(tutor.id)} /></label>)}
+            {alvo.slice(inicioPagina, fimPagina).map((tutor) => <label key={tutor.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm hover:bg-background"><span className="min-w-0"><span className="block truncate font-semibold">{tutor.nome}</span><span className="block truncate text-xs text-muted-foreground">{tutor.telefone || tutor.outro_telefone || tutor.email || "Sem contato digital"}</span></span><input type="checkbox" checked={selecionados.includes(tutor.id)} onChange={() => alternarTutor(tutor.id)} /></label>)}
             {!alvo.length && <p className="py-4 text-center text-sm text-muted-foreground">
               {filtro === "whatsapp" && totaisWhatsApp.cadastrados > 0
                 ? `Há ${totaisWhatsApp.cadastrados} tutor(es) com WhatsApp cadastrado, mas nenhum com autorização de marketing para campanhas. Para acompanhamento clínico, use Retornos e cuidados.`
                 : "Nenhum tutor atende a este filtro de campanha. Verifique a autorização de marketing no cadastro do tutor."}
             </p>}
           </div>
+          {alvo.length > quantidadePorPagina && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span role="status">Tutores {inicioPagina + 1} a {fimPagina} de {alvo.length}</span>
+            <div className="flex gap-2">
+              <button type="button" disabled={paginaExibida === 0} onClick={()=>setPaginaPublico(p=>Math.max(0,p-1))} className="min-h-10 rounded-lg border px-3 disabled:opacity-50">Página anterior</button>
+              <button type="button" disabled={fimPagina >= alvo.length} onClick={()=>setPaginaPublico(p=>p+1)} className="min-h-10 rounded-lg border px-3 disabled:opacity-50">Próxima página</button>
+            </div>
+          </div>}
         </div>
         <p className="mt-4 text-xs font-bold uppercase tracking-wider text-primary">3. Confira antes de criar a fila</p>
-        <button type="button" disabled={!podeCampanhas || publicando || carregando || selecionados.length === 0}
+        <button ref={revisaoBotao} type="button" disabled={!podeCampanhas || publicando || carregando || selecionados.length === 0}
           onClick={() => {
             if (!nome.trim() || !assunto.trim() || !mensagem.trim())
               return void toast.error("Preencha o nome, o assunto e a mensagem.");
@@ -351,27 +398,27 @@ export function Crm360Panel({ clinicaId, podeCampanhas, podeOperar, onAbrirFila 
           className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-50">
           <Send size={17}/> Revisar campanha ({selecionados.length} tutor(es))
         </button>
-        {revisandoCampanha && <div role="dialog" aria-modal="true" aria-label="Revisar campanha"
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-xl rounded-2xl border bg-card p-5 shadow-2xl">
-            <h4 className="text-xl font-black">Confirmar campanha</h4>
+        <Dialog open={revisandoCampanha} onOpenChange={aberto=>{if(!aberto&&!publicando)setRevisandoCampanha(false);}}>
+          <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl bg-card p-5"
+            onCloseAutoFocus={e=>{e.preventDefault();revisaoBotao.current?.focus();}}>
+            <DialogTitle className="text-xl font-black">Confirmar campanha</DialogTitle>
             <p className="mt-2 text-sm">Campanha: <strong>{nome}</strong></p>
             <p className="mt-1 text-sm">Destinatários com autorização: <strong>{selecionados.filter(id=>porTutor.get(id)?.autoriza_marketing === true).length}</strong></p>
-            <p className="mt-2 text-xs text-muted-foreground">Esta ação cria contatos na fila da equipe. Não envia WhatsApp ou e-mail automaticamente.</p>
+            <DialogDescription>Esta ação cria contatos na fila da equipe. Não envia WhatsApp ou e-mail automaticamente.</DialogDescription>
             <div className="mt-3 rounded-xl border bg-muted/20 p-3">
               <p className="text-xs font-semibold">Prévia da mensagem</p>
-              <p className="mt-2 whitespace-pre-wrap text-sm">{mensagem.replaceAll("{{tutor}}",porTutor.get(selecionados[0])?.nome || "Tutor")}</p>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm">{mensagem.replaceAll("{{tutor}}",porTutor.get(selecionados[0])?.nome || "Tutor")}</p>
             </div>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button type="button" disabled={publicando} onClick={()=>setRevisandoCampanha(false)}
                 className="min-h-11 rounded-xl border px-4 text-sm font-bold">Voltar e editar</button>
-              <button type="button" disabled={publicando} onClick={() => void publicarCampanha()}
+              <button type="button" disabled={publicando || carregando || !selecionados.length || !podeCampanhas} onClick={() => void publicarCampanha()}
                 className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-40">
                 {publicando ? "Criando..." : "Confirmar e criar fila"}
               </button>
             </div>
-          </div>
-        </div>}
+          </DialogContent>
+        </Dialog>
         {!podeCampanhas && <p className="mt-2 text-xs text-amber-700">Seu perfil pode visualizar o CRM, mas não possui permissão para publicar campanhas.</p>}
       </section>
 

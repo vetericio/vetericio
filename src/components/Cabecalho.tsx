@@ -50,16 +50,17 @@ export function Cabecalho({
   const confirmacao = usarConfirmacao();
   const [iniciarAberto, setIniciarAberto] = useState(false);
   const [dataHoje, setDataHoje] = useState("");
-  const podeGerenciarPlantao = carregandoPermissoes || pode("internacao.plantoes");
+  const podeGerenciarPlantao = !carregandoPermissoes && pode("internacao.plantoes");
+  const podeFinalizarPlantao = podeGerenciarPlantao && pode("internacao.registrar");
 
   const finalizarPlantao = () => {
-    if (!podeGerenciarPlantao) return;
+    if (!podeFinalizarPlantao) return;
     const quantos = registros.length;
     confirmacao.pedir({
       titulo: "Finalizar o plantão agora?",
       descricao: quantos
-        ? `${quantos} animal(is) vão para o histórico de plantões. Nada é apagado: você continua vendo tudo em Plantões.`
-        : "Nenhum animal na lista de hoje. Nada é apagado.",
+        ? `O retrato das ${quantos} fichas vai para Plantões, mas elas saem da lista ativa. Os alarmes atuais serão encerrados e o bloco de notas será limpo. Confira a passagem dos animais que continuam internados antes de prosseguir.`
+        : "Não há fichas na lista ativa. Ainda assim, o encerramento desativa os alarmes do plantão e limpa o bloco de notas.",
       acao: "Finalizar plantão",
       onConfirmar: finalizar,
     });
@@ -111,6 +112,7 @@ export function Cabecalho({
               <button
                 type="button"
                 onClick={finalizarPlantao}
+                disabled={!podeFinalizarPlantao}
                 className="w-full max-w-xs rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90"
               >
                 Finalizar plantão

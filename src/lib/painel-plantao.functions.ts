@@ -21,6 +21,7 @@ const entradaEvento = contextoSchema.extend({
       tipo: z.literal("dose"),
       chave: z.string().regex(/^[a-f\d]{64}:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
       estado: z.enum(["realizada", "nao_realizada"]),
+      revisouHistorico: z.boolean().optional(),
       texto,
     }),
     z.object({
@@ -213,6 +214,12 @@ export const registrarEventoPlantao = createServerFn({ method: "POST" })
     const anterior = await consultaAnterior();
     if (anterior.error) throw new Error("Não foi possível verificar a execução anterior.");
     if (anterior.data) return anterior.data;
+    if (evento.tipo === "dose" && dose?.historicoLegadoSemVinculo && !evento.revisouHistorico) {
+      throw new Error(
+        "Há um registro antigo sem vínculo com este horário. Confira a ficha e confirme a revisão.",
+      );
+    }
+
     const paciente =
       evento.tipo === "ocorrencia"
         ? registros.find(

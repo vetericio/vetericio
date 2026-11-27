@@ -140,3 +140,24 @@ test("a escrita é aditiva, separada por clínica/turno e com autor exclusivamen
   assert.match(endpoint, /\["internacao\.registrar"\]/);
   assert.doesNotMatch(endpoint, /\.delete\(|\.update\(|\.upsert\(/);
 });
+
+test("avisa de histórico legado recente da mesma ficha sem vincular ou liquidar a dose", async () => {
+  const dia = "2026-11-28T13:00:00.000Z";
+  const legado = { ...m, nome: "ÍTEM FICTÍCIO A", aplicadoEm: dia };
+  const antiga = { ...m, aplicadoEm: "2026-11-25T10:00:00Z" };
+  const p = await programarPlantao(
+    [ficha([m, legado]), ficha([m, antiga], { id: "outra-ficha" })],
+    turno,
+    agora,
+  );
+  const atribuicao = p.doses.filter((d) => d.registroId === "ficha-ficticia");
+  assert.equal(atribuicao[0]?.horario, dia);
+  assert.equal(atribuicao[0]?.confirmada, true);
+  assert.equal(atribuicao[0]?.historicoLegadoSemVinculo, true);
+  assert.ok(
+    p.doses
+      .filter((d) => d.registroId === "outra-ficha")
+      .every((d) => !d.historicoLegadoSemVinculo),
+  );
+  assert.equal(p.doses.length, 10);
+});
