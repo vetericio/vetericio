@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ManualSistemaMenu } from "@/components/ManualSistemaMenu";
 import { DialogoTurno } from "@/components/DialogoTurno";
 import { usePlantaoAtual } from "@/hooks/usePlantaoAtual";
 import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
@@ -625,6 +626,7 @@ export function MenuLateral({
             {maisOpcoesAberto && (
               <div id="oricse-menu-mais-opcoes" className="oricse-menu-panel ml-5 space-y-2 border-l-[3px] border-border py-3 pl-3 pr-2">
                 {areasOpcionais.map(renderArea)}
+                <ManualSistemaMenu admin={adminGlobal} />
                 <button
                   type="button"
                   disabled={saindo}
