@@ -7,16 +7,20 @@ import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabaseBanco } from "@/integrations/supabase/client";
+import { PrecoPorPesoOrcamento } from "@/components/PrecoPorPesoOrcamento";
+import { calcularPrecoOrcamento, type PerfilOrcamento } from "@/lib/preco-orcamento";
+import { faixasValidas, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
 
 export const Route = createFileRoute("/orcamento-venda-expressa")({ component: OrcamentoVendaExpressa });
 
-type Produto = { id: string; nome: string; valor: number; tipo: string; ativo: boolean };
-type Linha = { id: string; produtoId: string; quantidade: number };
+type Produto = { id: string; nome: string; valor: number; faixas: FaixaPrecoPeso[] };
+type Linha = { id: string; produtoId: string; quantidade: number; perfil: PerfilOrcamento };
 type Clinica = Record<string, unknown>;
 type Tutor = { id: string; nome: string; telefone?: string | null; email?: string | null };
 const moeda = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const texto = (v: unknown) => typeof v === "string" ? v.trim() : "";
 const numero = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : 0;
+const perfilInicial: PerfilOrcamento = { especie: null, sexo: null, peso: "" };
 
 function OrcamentoVendaExpressa() {
   const demoAlvorada = useDemoAlvorada();
@@ -31,7 +35,17 @@ function OrcamentoVendaExpressa() {
   const [validade, setValidade] = useState("7");
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [carregando, setCarregando] = useState(false);
-  const total = useMemo(() => linhas.reduce((s, l) => s + (produtos.find(p => p.id === l.produtoId)?.valor || 0) * l.quantidade, 0), [linhas, produtos]);
+  const itens = useMemo(() => linhas.map(linha => {
+    const produto = produtos.find(p => p.id === linha.produtoId);
+    const preco = produto?.faixas.length ? calcularPrecoOrcamento(produto.faixas, linha.perfil) : null;
+    const unitario = preco ? preco.valor : produto?.valor ?? null;
+    const quantidadeMilesimos = Math.round(linha.quantidade * 1000);
+    const subtotalCentavos = unitario !== null && Number.isFinite(linha.quantidade) && linha.quantidade > 0
+      ? Math.round(Math.round(unitario * 100) * quantidadeMilesimos / 1000) : null;
+    return { linha, produto, preco, subtotalCentavos };
+  }), [linhas, produtos]);
+  const total = itens.reduce((soma, item) => soma + (item.subtotalCentavos ?? 0), 0) / 100;
+  const temPrecoPendente = itens.some(({ preco }) => preco && preco.valor === null);
 
   useEffect(() => {
     if (!clinicaId || !autorizado) return;
@@ -39,13 +53,18 @@ function OrcamentoVendaExpressa() {
     setCarregando(true);
     Promise.all([
       (supabaseBanco as any).rpc("oricse_orcamento_dados_clinica", { p_clinica_id: clinicaId }),
-      (supabaseBanco as any).from("oricse_catalogo_itens").select("id,nome,valor,tipo,ativo").eq("clinica_id", clinicaId).eq("ativo", true).order("nome"),
+      supabaseBanco.from("oricse_catalogo_itens").select("id,nome,valor,tipo,faixas_peso").eq("clinica_id", clinicaId).eq("ativo", true).order("nome"),
       (supabaseBanco as any).from("tutores").select("id,nome,telefone,email").eq("clinica_id", clinicaId).order("nome").limit(1000),
     ]).then(([c, p, t]) => {
       if (!ativo) return;
       if (c.error || p.error) throw new Error(c.error?.message || p.error?.message);
       setClinica(c.data || {});
-      setProdutos(p.data || []);
+      setProdutos((p.data ?? []).map(item => ({
+        id: item.id,
+        nome: item.nome,
+        valor: numero(item.valor),
+        faixas: item.tipo === "servico" ? faixasValidas(item.faixas_peso) : [],
+      })));
       setTutores(t.error ? [] : t.data || []);
     }).catch(e => { if (ativo) toast.error(e instanceof Error ? e.message : "Não foi possível carregar os dados."); })
       .finally(() => { if (ativo) setCarregando(false); });
@@ -55,14 +74,21 @@ function OrcamentoVendaExpressa() {
   function adicionar() {
     const primeiro = produtos[0];
     if (!primeiro) return toast.error("Cadastre um produto ou serviço antes de elaborar o orçamento.");
-    setLinhas(v => [...v, { id: crypto.randomUUID(), produtoId: primeiro.id, quantidade: 1 }]);
+    setLinhas(v => [...v, { id: crypto.randomUUID(), produtoId: primeiro.id, quantidade: 1, perfil: perfilInicial }]);
   }
+  function atualizarLinha(id: string, campos: Partial<Omit<Linha, "id">>) {
+    setLinhas(atuais => atuais.map(linha => linha.id === id ? { ...linha, ...campos } : linha));
+  }
+
   function gerarCanvas() {
     if (demoAlvorada) {
       toast.info(AVISO_DEMO_DOCUMENTOS);
       return null;
     }
-    if (!linhas.length || linhas.some(l => !l.produtoId || !Number.isFinite(l.quantidade) || l.quantidade <= 0)) {
+    if (temPrecoPendente) {
+      toast.error("Complete o perfil e o peso dos serviços com preço por faixa."); return null;
+    }
+    if (!itens.length || itens.some(item => item.subtotalCentavos === null)) {
       toast.error("Inclua itens e quantidades válidas."); return null;
     }
     const largura = 1240, altura = Math.max(1754, 730 + linhas.length * 72 + (observacoes.length > 0 ? 180 + Math.ceil(observacoes.length / 70) * 30 : 0));
@@ -96,13 +122,17 @@ function OrcamentoVendaExpressa() {
     ctx.fillStyle = "#692b40"; ctx.font = "bold 23px Arial";
     ctx.fillText("DESCRIÇÃO", 93, 547); ctx.fillText("QTD.", 780, 547); ctx.fillText("TOTAL", 980, 547);
     let y = 617;
-    linhas.forEach(l => {
-      const item = produtos.find(p => p.id === l.produtoId);
+    itens.forEach(({ linha, produto, preco, subtotalCentavos }) => {
       ctx.font = "22px Arial"; ctx.fillStyle = "#182239";
-      ctx.fillText((item?.nome || "Item").slice(0, 49), 93, y);
-      ctx.fillText(l.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 }), 780, y);
-      ctx.fillText(moeda((item?.valor || 0) * l.quantidade), 980, y);
-      ctx.strokeStyle = "#e3e5eb"; ctx.beginPath(); ctx.moveTo(74, y + 24); ctx.lineTo(1166, y + 24); ctx.stroke();
+      ctx.fillText(produto?.nome || "Item", 93, y, 655);
+      ctx.fillText(linha.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 }), 780, y);
+      ctx.fillText(moeda((subtotalCentavos ?? 0) / 100), 980, y);
+      if (preco?.pesoKg != null) {
+        ctx.font = "18px Arial"; ctx.fillStyle = "#4b5563";
+        const peso = preco.pesoKg.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+        ctx.fillText([linha.perfil.especie, linha.perfil.sexo, peso + " kg"].join(" · "), 93, y + 24);
+      }
+      ctx.strokeStyle = "#e3e5eb"; ctx.beginPath(); ctx.moveTo(74, y + 35); ctx.lineTo(1166, y + 35); ctx.stroke();
       y += 72;
     });
     ctx.fillStyle = "#692b40"; ctx.font = "bold 33px Arial"; ctx.fillText("TOTAL: " + moeda(total), 760, y + 50);
@@ -164,14 +194,20 @@ function OrcamentoVendaExpressa() {
     </section>
     <section className="space-y-3 rounded-2xl border bg-card p-5">
       <div className="flex items-center justify-between"><h2 className="font-bold">Produtos e serviços</h2><button type="button" onClick={adicionar} disabled={carregando || !produtos.length} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={17}/> Adicionar item</button></div>
-      {linhas.map(l => {const item=produtos.find(p=>p.id===l.produtoId);return <div key={l.id} className="grid items-center gap-2 sm:grid-cols-[1fr_110px_125px_42px]">
-        <select aria-label="Produto ou serviço" className="min-w-0 rounded-lg border bg-background p-2.5" value={l.produtoId} onChange={e=>setLinhas(a=>a.map(x=>x.id===l.id?{...x,produtoId:e.target.value}:x))}>{produtos.map(p=><option key={p.id} value={p.id}>{p.nome} · {moeda(numero(p.valor))}</option>)}</select>
-        <input aria-label="Quantidade" type="number" min="0.001" step="0.001" className="rounded-lg border p-2.5" value={l.quantidade} onChange={e=>setLinhas(a=>a.map(x=>x.id===l.id?{...x,quantidade:Number(e.target.value)}:x))}/>
-        <strong className="text-sm">{moeda((item?.valor||0)*l.quantidade)}</strong>
-        <button type="button" aria-label="Remover item" onClick={()=>setLinhas(a=>a.filter(x=>x.id!==l.id))} className="rounded-lg border p-2.5"><Trash2 size={17}/></button>
-      </div>})}
+      {itens.map(({ linha, preco, subtotalCentavos }) => <div key={linha.id} className="grid items-center gap-2 sm:grid-cols-[1fr_110px_125px_42px]">
+        <select aria-label="Produto ou serviço" className="min-w-0 rounded-lg border bg-background p-2.5" value={linha.produtoId}
+          onChange={e => atualizarLinha(linha.id, { produtoId: e.target.value })}>
+          {produtos.map(p => <option key={p.id} value={p.id}>{p.nome} · {p.faixas.length ? "Preço por perfil" : moeda(p.valor)}</option>)}
+        </select>
+        <input aria-label="Quantidade" type="number" min="0.001" step="0.001" className="min-w-0 rounded-lg border p-2.5"
+          value={linha.quantidade} onChange={e => atualizarLinha(linha.id, { quantidade: Number(e.target.value) })}/>
+        <strong className="text-sm tabular-nums">{subtotalCentavos === null ? "Pendente" : moeda(subtotalCentavos / 100)}</strong>
+        <button type="button" aria-label="Remover item" onClick={() => setLinhas(a => a.filter(x => x.id !== linha.id))} className="rounded-lg border p-2.5"><Trash2 size={17}/></button>
+        {preco && <PrecoPorPesoOrcamento perfil={linha.perfil} preco={preco}
+          onChange={campos => atualizarLinha(linha.id, { perfil: { ...linha.perfil, ...campos } })} />}
+      </div>)}
       {!linhas.length&&<p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Adicione os itens do orçamento.</p>}
-      <p className="text-right text-xl font-bold">Total: {moeda(total)}</p>
+      <p className="text-right text-xl font-bold">{temPrecoPendente ? "Parcial" : "Total"}: {moeda(total)}</p>
     </section>
     <label className="block text-sm font-semibold">Observações<textarea className="mt-2 min-h-24 w-full rounded-xl border bg-card p-3" value={observacoes} onChange={e=>setObservacoes(e.target.value)} placeholder="Condições e informações adicionais"/></label>
     <div className="flex flex-wrap gap-2">

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { build } from "esbuild";
+import { calcularPrecoOrcamento } from "../src/lib/preco-orcamento.ts";
 
 const arquivo = await build({
   entryPoints:["src/lib/preco-por-peso.ts"],
@@ -43,6 +44,30 @@ assert.equal(lib.agruparFaixasPorCondicao(castracao).length,4);
 assert.equal(lib.tituloFaixa([{ateKg:null,valor:65}],0),"Sem limite de peso");
 assert.equal(lib.tituloFaixa(linhas,0),"Até 10 kg");
 assert.match(lib.tituloFaixa(linhas,3),/Acima de 30 kg/);
+
+const tabelaOrcamento = [
+  ...linhas,
+  ...castracao.slice(1),
+  { ateKg: 10, valor: 250, especie: "Cão", sexo: "Macho" },
+  { ateKg: 15, valor: 250, especie: "Cão", sexo: "Macho" },
+  { ateKg: 60, valor: 300, especie: "Cão", sexo: "Macho" },
+  { ateKg: null, valor: 450, especie: "Cão", sexo: "Macho" },
+];
+const perfilOrcamento = { especie: "Cão", sexo: "Macho", peso: "15" };
+assert.equal(calcularPrecoOrcamento(tabelaOrcamento, perfilOrcamento).valor, 250);
+assert.deepEqual(calcularPrecoOrcamento(tabelaOrcamento, perfilOrcamento).mudancas, [{ aposKg: 15, valor: 300 }]);
+assert.equal(calcularPrecoOrcamento(tabelaOrcamento, { ...perfilOrcamento, peso: "15,001" }).valor, 300);
+assert.equal(calcularPrecoOrcamento(tabelaOrcamento, { ...perfilOrcamento, peso: "60" }).valor, 300);
+assert.equal(calcularPrecoOrcamento(tabelaOrcamento, { ...perfilOrcamento, especie: "Gato", sexo: "Fêmea" }).valor, 420);
+assert.equal(calcularPrecoOrcamento(tabelaOrcamento, { ...perfilOrcamento, sexo: null }).valor, null);
+for (const peso of ["", "0", "60,001", "0x10"]) {
+  assert.equal(calcularPrecoOrcamento(tabelaOrcamento, { ...perfilOrcamento, peso }).valor, null);
+}
+assert.equal(calcularPrecoOrcamento(castracao, { ...perfilOrcamento, especie: "Gato" }).valor, 290);
+assert.equal(calcularPrecoOrcamento(castracao.slice(0, 1), { ...perfilOrcamento, especie: "Gato" }).valor, null);
+assert.equal(calcularPrecoOrcamento([{ ateKg: null, valor: 0 }], perfilOrcamento).valor, 0);
+const regrasParciais = [{ ateKg: null, valor: 200, sexo: "Macho" }, { ateKg: null, valor: 300, especie: "Cão" }];
+assert.equal(calcularPrecoOrcamento(regrasParciais, perfilOrcamento).valor, 300);
 
 const [catalogo,consulta,comanda,aprovacao,banco,tipos] = await Promise.all([
   readFile("src/routes/estoque.tsx","utf8"),
