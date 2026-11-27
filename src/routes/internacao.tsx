@@ -1,13 +1,14 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useState } from "react";
-import { ReceiptText } from "lucide-react";
+import { ClipboardList, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 import { Calculadora as CalculadoraBase } from "@/components/Calculadora";
 import { FerramentasClinicas as FerramentasClinicasBase } from "@/components/FerramentasClinicas";
 import { FormAvaliacao } from "@/components/FormAvaliacao";
 import { InstalarApp as InstalarAppBase } from "@/components/InstalarApp";
 import { GuardaSaida } from "@/components/GuardaSaida";
+import { usePermissoes } from "@/hooks/usePermissoes";
 import { useConforto } from "@/hooks/useConforto";
 import { useRegistros } from "@/hooks/useRegistros";
 import { useCurvas } from "@/hooks/useCurvas";
@@ -89,6 +90,8 @@ function mesclarAvaliacao(base: Registro, novos: Omit<Registro, "id">): Registro
 }
 
 function Index() {
+  const { carregando: acessoCarregando, pode } = usePermissoes();
+  const podeAbrirPainel = !acessoCarregando && pode("internacao.medicacoes") && pode("internacao.registrar");
   const { registros, setRegistros, carregado } = useRegistros();
   const [form, setForm] = useState<Omit<Registro, "id">>(REGISTRO_VAZIO);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -252,7 +255,10 @@ function Index() {
 
   return (
     <main className="relative mx-auto w-full max-w-5xl px-4 pb-16 pt-5">
-      <a href="/comandas?origem=Internação" className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/20 bg-white px-3 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={16}/> Abrir comanda</a>
+      <div className="mb-4 flex flex-wrap gap-2">
+      <a href="/comandas?origem=Internação" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/20 bg-white px-3 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"><ReceiptText size={16}/> Abrir comanda</a>
+        {podeAbrirPainel && <Link to="/horarios-medicacoes" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground"><ClipboardList size={16}/> Painel do Plantão</Link>}
+      </div>
       <div className="relative z-10">
       <GuardaSaida sujo={sujo} />
       <button

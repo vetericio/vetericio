@@ -70,11 +70,14 @@ async function lerDrive<T>(
   return resultado.data as T[];
 }
 
-type EventoDrive = EventoAgendaRelatorio & { dados?: { status_clinico?: unknown } | null };
+type EventoDrive = EventoAgendaRelatorio & {
+  dados?: { status_clinico?: unknown; reagendado_em?: unknown } | null;
+};
 
 const converterDrive = ({ dados, ...evento }: EventoDrive): EventoAgendaRelatorio => ({
   ...evento,
   status_clinico: typeof dados?.status_clinico === "string" ? dados.status_clinico : null,
+  reagendado_em: typeof dados?.reagendado_em === "string" ? dados.reagendado_em : null,
 });
 
 const uuidReal = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
@@ -120,7 +123,9 @@ export async function gerarRelatorioAgenda(entrada: EntradaRelatorio): Promise<D
   const consultaEventos = () =>
     banco
       .from("oricse_agendamentos_online")
-      .select(`${colunasEvento},status_clinico:dados->>status_clinico`)
+      .select(
+        `${colunasEvento},status_clinico:dados->>status_clinico,reagendado_em:dados->>reagendado_em`,
+      )
       .eq("clinica_id", clinicaId);
   const [agendasDrive, agendasPg, eventosDrive, eventosPg] = await Promise.all([
     lerDrive<AgendaRelatorio>(entrada, "oricse_agendas_online", colunasAgenda),

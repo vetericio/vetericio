@@ -7,6 +7,9 @@ export type PlantaoAtual = {
   turno: Turno;
   /** Dia do aparelho em que a escolha foi feita (AAAA-MM-DD). */
   escolhidoEm?: string;
+  /** Identidade e marco dos novos plantões; plantões legados não têm estes campos. */
+  id?: string;
+  iniciadoEm?: string;
 };
 
 const CHAVE = "veterico-plantao-v1";

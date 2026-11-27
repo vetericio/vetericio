@@ -5,6 +5,7 @@ import { supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { AgendaDayBoard, AgendaErrorBoundary } from "@/components/agenda/AgendaDayBoard";
 import "@/components/agenda/agenda-color-overrides.css";
+import { AgendaPortalDaEquipe } from "@/components/PortalAgendaInteracoes";
 
 export const Route = createFileRoute("/todas-agendas")({ component: TodasAgendas });
 type Estadia = { id: string; chegada_prevista: string; saida_prevista: string; status: string; animal_id: string };
@@ -36,7 +37,7 @@ function feriado(data:string) {
  return diaLocal(sexta)===data?"Sexta-feira Santa":null;
 }
 export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean } = {}) {
-  const { clinicaId } = usePermissoes();
+  const { clinicaId, pode } = usePermissoes();
   const [dia, setDia] = useState(() => diaLocal(new Date()));
   const [visao, setVisao] = useState<"dia" | "semana" | "mes">("dia");
   const [estadias, setEstadias] = useState<Estadia[]>([]);
@@ -129,6 +130,7 @@ export function TodasAgendas({ somenteHotel = false }: { somenteHotel?: boolean 
       <button type="button" onClick={() => {setAtualizacao(n => n + 1);setChaveAgendas(n => n + 1);}} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"><RefreshCw size={16}/> Atualizar agendas</button>
     </div>
     {!somenteHotel && <>
+    {clinicaId && pode("recepcao.agenda") && <AgendaPortalDaEquipe key={clinicaId} clinicaId={clinicaId} versao={chaveAgendas} />}
     <section id="agenda-clinica" aria-label="Agenda da clínica veterinária" className="scroll-mt-5 rounded-3xl border border-sky-200/80 bg-sky-50/30 p-2 shadow-sm sm:p-3 dark:border-sky-900 dark:bg-sky-950/10">
       <AgendaErrorBoundary><AgendaDayBoard key={`clinica-${chaveAgendas}`} mode="recepcao"/></AgendaErrorBoundary>
     </section>

@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      oricse_conferencia_cartoes: {
+        Row: {
+          id: string
+          clinica_id: string
+          lancamento_id: string
+          liquido_esperado_centavos: number
+          recebido_centavos: number
+          depositado_em: string
+          anotacao: string
+          conferido_por: string
+          conferido_em: string
+        }
+        Insert: {
+          id?: string
+          clinica_id: string
+          lancamento_id: string
+          liquido_esperado_centavos: number
+          recebido_centavos: number
+          depositado_em: string
+          anotacao?: string
+          conferido_por?: string
+          conferido_em?: string
+        }
+        Update: {
+          id?: string
+          clinica_id?: string
+          lancamento_id?: string
+          liquido_esperado_centavos?: number
+          recebido_centavos?: number
+          depositado_em?: string
+          anotacao?: string
+          conferido_por?: string
+          conferido_em?: string
+        }
+        Relationships: []
+      }
+      oricse_fechamentos_comissao: {
+        Row: {
+          clinica_id: string
+          funcionario_id: string
+          mes: string
+          itens: Json
+          valor_centavos: number
+          fechado_em: string
+          fechado_por: string
+        }
+        Insert: {
+          clinica_id: string
+          funcionario_id: string
+          mes: string
+          itens: Json
+          valor_centavos: number
+          fechado_em?: string
+          fechado_por?: string
+        }
+        Update: {
+          clinica_id?: string
+          funcionario_id?: string
+          mes?: string
+          itens?: Json
+          valor_centavos?: number
+          fechado_em?: string
+          fechado_por?: string
+        }
+        Relationships: []
+      }
+      oricse_whatsapp_acompanhamentos: {
+        Row: {
+          id: string
+          clinica_id: string
+          evento_id: string
+          situacao: "entrega_observada" | "resposta_observada"
+          registrado_por: string
+          registrado_em: string
+        }
+        Insert: {
+          id?: string
+          clinica_id: string
+          evento_id: string
+          situacao: "entrega_observada" | "resposta_observada"
+          registrado_por?: string
+          registrado_em?: string
+        }
+        Update: {
+          id?: string
+          clinica_id?: string
+          evento_id?: string
+          situacao?: "entrega_observada" | "resposta_observada"
+          registrado_por?: string
+          registrado_em?: string
+        }
+        Relationships: []
+      }
       app_users: {
         Row: {
           created_at: string

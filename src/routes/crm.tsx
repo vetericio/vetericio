@@ -1,3 +1,4 @@
+import { HistoricoWhatsAppManual } from "@/components/HistoricoWhatsAppManual";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarClock, Check, FileText, HeartPulse, History, LayoutGrid, Mail, Megaphone, MessageCircle, RefreshCw, Settings2, Sparkles, Star, Users } from "lucide-react";
@@ -690,7 +691,7 @@ function Crm() {
     </section>}
 
     {visao === "historico" && <section className="mt-5 space-y-3">
-      {historico.length ? historico.map((evento) => <EventoCard key={evento.id} evento={evento} podeOperar={false} salvando={false} onContato={abrirContato} onStatus={alterarStatus}/>) : <Vazio texto="Ainda não há contatos concluídos ou ignorados."/>}
+      {historico.length ? historico.map((evento) => <EventoCard key={evento.id} evento={evento} podeOperar={podeOperar} salvando={false} onContato={abrirContato} onStatus={alterarStatus}/>) : <Vazio texto="Ainda não há contatos concluídos ou ignorados."/>}
     </section>}
 
     {visao === "modelos" && <section className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -744,6 +745,7 @@ function EventoCard({ evento, podeOperar, salvando, onContato, onStatus }: { eve
       <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">{ROTULOS[evento.tipo]}</span><span className="text-xs text-muted-foreground"><CalendarClock size={13} className="mr-1 inline"/>{quando.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span></div><h2 className="mt-2 truncate text-lg font-black">{evento.destinatario_nome || "Tutor"}{evento.animal_nome ? ` · ${evento.animal_nome}` : ""}</h2><p className="mt-1 text-sm text-muted-foreground">{evento.mensagem}</p></div>
       <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${evento.status === "enviado" ? "bg-emerald-100 text-emerald-800" : evento.status === "pendente" ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground"}`}>{evento.status}</span>
     </div>
+    {evento.canal === "whatsapp" && evento.status === "enviado" && <HistoricoWhatsAppManual clinicaId={evento.clinica_id} eventoId={evento.id} fonte={evento.fonteDados} podeRegistrar={podeOperar}/>}
     {podeOperar && evento.status === "pendente" && <div className="mt-4 flex flex-wrap gap-2">
       <button type="button" onClick={() => onContato(evento)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground">{evento.canal === "email" ? <Mail size={16}/> : <MessageCircle size={16}/>} {evento.canal === "manual" ? "Copiar mensagem" : evento.canal === "email" ? "Abrir e-mail" : "Abrir WhatsApp"}</button>
       <button type="button" disabled={salvando} onClick={() => void onStatus(evento, "enviado")} className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-bold disabled:opacity-50"><Check size={16}/> Marcar enviado</button>

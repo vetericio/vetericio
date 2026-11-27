@@ -404,7 +404,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
         nome: nomeLimpo,
         dose: ref && dose.trim() ? `${dose} ${ref.unidadeDose}`.trim() : "",
         duracao: ref?.intervalo ? `${ref.intervalo}h` : "",
-        ...(horarioInicial ? { horarioInicial } : {}),
+        ...(horarioInicial ? { horarioInicial, programadaEm: new Date().toISOString() } : {}),
         ...(conta?.ok ? { quantidade: `${conta.volumeTexto} ${conta.unidade}` } : {}),
       });
     });
@@ -440,12 +440,18 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       return;
     }
     const duracaoSalva = duracaoParaSalvar(duracao, duracaoOutros);
+    const anterior = editando !== null ? lista[editando] : undefined;
+    const mesmaProgramacao = anterior?.horarioInicial === horarioInicial && anterior?.duracao === duracaoSalva &&
+      anterior?.nome === nomeLimpo;
     const item: Medicacao = {
-      ...(editando !== null ? lista[editando] : {}),
+      ...anterior,
       nome: nomeLimpo,
       dose,
       duracao: duracaoSalva,
-      ...(horarioInicial ? { horarioInicial } : {}),
+      horarioInicial: horarioInicial || undefined,
+      programadaEm: horarioInicial
+        ? (mesmaProgramacao ? anterior?.programadaEm : undefined) || new Date().toISOString()
+        : undefined,
       ...(refCalculo && quantidadeFinal
         ? { quantidade: `${quantidadeFinal} ${unidadeCalculada || unidade}` }
         : {}),
@@ -527,6 +533,9 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       quantidade: quantidadeFinal,
       duracao: edicaoInline.duracao.trim(),
       horarioInicial: horarioInicial || undefined,
+      programadaEm: horarioInicial
+        ? (m.horarioInicial === horarioInicial && m.duracao === edicaoInline.duracao.trim() ? m.programadaEm : undefined) || new Date().toISOString()
+        : undefined,
     } : m));
     setEdicaoInline(null);
     resetForm();

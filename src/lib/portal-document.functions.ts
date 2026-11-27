@@ -4,7 +4,7 @@ import { driveAccessToken, driveFetch } from "@/lib/drive-kv.server";
 import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
 import { PORTAL_PDF_MAX_BYTES } from "@/lib/drive-storage";
 
-const schema=z.object({accessToken:z.string().min(20),documentoId:z.string().uuid(),clinicaEquipeId:z.string().uuid().optional(),tipo:z.enum(["documento","exame","receita"]).default("documento")});
+const schema=z.object({accessToken:z.string().min(20),documentoId:z.string().uuid(),clinicaEquipeId:z.string().uuid().optional(),tipo:z.enum(["documento","exame","receita","exame-laboratorial"]).default("documento")});
 
 async function driveQuery(accessToken:string,table:string,filters:any[]){
   const {executarDriveDbInterno}=await import("@/lib/drive-db.functions");
@@ -35,16 +35,29 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
     const {data:authData,error:authError}=await supabaseAdmin.auth.getUser(data.accessToken);
     if(authError||!authData.user)throw new Error("Sessão inválida ou expirada.");
 
+    const laboratorial = data.tipo === "exame-laboratorial";
+    if (laboratorial && !data.clinicaEquipeId) throw new Error("Resultado laboratorial interno não disponível no portal.");
+    if (laboratorial) {
+      await exigirPermissaoClinica(supabaseAdmin,authData.user.id,data.clinicaEquipeId!,["consultorio.atendimentos"],data.accessToken);
+    }
     const tabela=data.tipo==="exame"?"oricse_portal_exames":data.tipo==="receita"?"oricse_portal_receitas":"oricse_portal_documentos";
     // Documentos clínicos novos têm registro canônico no PostgreSQL;
     // preservar a consulta legada do Drive para registros anteriores.
-    const {data:canonico,error:erroCanonico}=await supabaseAdmin.from(tabela as "oricse_portal_documentos")
-      .select("id,clinica_id,animal_id,drive_arquivo_id,visivel_tutor,tipo")
-      .eq("id",data.documentoId).maybeSingle();
+    const consulta = laboratorial
+      ? ((supabaseAdmin as unknown as import("@supabase/supabase-js").SupabaseClient).from("oricse_exames_laboratoriais")
+        .select("id,clinica_id,animal_id,drive_arquivo_id").eq("clinica_id",data.clinicaEquipeId!)
+        .eq("id",data.documentoId).maybeSingle())
+      : supabaseAdmin.from(tabela as "oricse_portal_documentos")
+        .select("id,clinica_id,animal_id,drive_arquivo_id,visivel_tutor,tipo").eq("id",data.documentoId).maybeSingle();
+    const {data:linhaCanonica,error:erroCanonico}=await consulta;
+    const canonico = linhaCanonica as ({
+      id: string; clinica_id: string; animal_id: string; drive_arquivo_id: string | null;
+      tipo?: string; visivel_tutor?: boolean;
+    } | null);
     if(erroCanonico)throw new Error("Não foi possível verificar a autorização do documento.");
     // Exclusão lógica bloqueia tanto o tutor quanto o funcionário na API.
     // O original continua retido no banco/Drive para auditoria interna do RT.
-    if (canonico && data.tipo !== "exame") {
+    if (canonico && data.tipo !== "exame" && !laboratorial) {
       const { data: estado, error: erroEstado } = await (supabaseAdmin as any)
         .from(tabela).select("excluido_em").eq("id", data.documentoId)
         .eq("clinica_id", canonico.clinica_id).maybeSingle();
@@ -64,7 +77,7 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
     const clinicaId: string = registro.clinica_id;
     if (data.clinicaEquipeId) {
       if (clinicaId!==data.clinicaEquipeId) throw new Error("Arquivo indisponível nesta clínica.");
-      await exigirPermissaoClinica(supabaseAdmin,authData.user.id,clinicaId,["consultorio.atendimentos"],data.accessToken);
+      if (!laboratorial) await exigirPermissaoClinica(supabaseAdmin,authData.user.id,clinicaId,["consultorio.atendimentos"],data.accessToken);
     } else {
       const {data:portal,error:erroPortal}=await supabaseAdmin.from("oricse_portal_tutores")
         .select("tutor_id").eq("auth_user_id",authData.user.id).eq("clinica_id",clinicaId)
@@ -94,6 +107,8 @@ export const baixarDocumentoPortal=createServerFn({method:"POST"})
 
     const response=await driveFetch(token,`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(arquivo.id)}?alt=media`);
     const bytes=Buffer.from(await response.arrayBuffer());
+    if(laboratorial && (arquivo.mimeType !== "application/pdf" || bytes.subarray(0,5).toString("ascii") !== "%PDF-"))
+      throw new Error("O laudo vinculado não contém um PDF válido.");
     if(bytes.byteLength>PORTAL_PDF_MAX_BYTES)throw new Error("Este arquivo é grande demais para abrir pelo portal.");
     return{nome:arquivo.name||registro.titulo,mimeType:arquivo.mimeType||"application/octet-stream",base64:bytes.toString("base64")};
   });

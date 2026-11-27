@@ -1,3 +1,4 @@
+import { HistoricoWhatsAppManual } from "@/components/HistoricoWhatsAppManual";
 import { useCallback, useEffect, useState } from "react";
 import { Check, ClipboardCopy, HeartPulse, MessageCircle, RefreshCw, Star, Users, X } from "lucide-react";
 import { toast } from "sonner";
@@ -271,6 +272,7 @@ export function CrmJornadaPanel({ clinicaId, tipo, podeOperar }: {
               {Boolean(e.metadados?.pesquisa_comentario)&&<span className="mt-1 block font-normal">Comentário: {String(e.metadados?.pesquisa_comentario)}</span>}
               {destacarResposta(e)!<=2&&<span className="mt-1 block text-amber-700">Atenção: conversar com o tutor sobre a experiência.</span>}
             </p>}
+            {e.canal==="whatsapp"&&e.status==="enviado"&&<HistoricoWhatsAppManual clinicaId={clinicaId} eventoId={e.id} fonte="banco" podeRegistrar={podeOperar}/>}
             {podeOperar&&e.status==="pendente"&&<div className="mt-4 flex flex-wrap gap-2">
               <button type="button" onClick={()=>void abrirContato(e)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">
                 <MessageCircle size={16}/> Revisar WhatsApp

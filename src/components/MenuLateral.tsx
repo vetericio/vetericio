@@ -162,6 +162,7 @@ const areas: AreaMenu[] = [
       {to:"/banho-tosa",abaHotel:"agenda",rotulo:"Agenda",permissao:"hotelzinho.visualizar"},
       {to:"/banho-tosa",abaHotel:"fila",rotulo:"Fila de serviços",permissao:"hotelzinho.visualizar"},
       {to:"/banho-tosa",abaHotel:"historico",rotulo:"Histórico",permissao:"hotelzinho.visualizar"},
+      {to:"/banho-tosa",abaHotel:"pacotes",rotulo:"Pacotes",permissao:"hotelzinho.visualizar"},
     ],
   },
   {

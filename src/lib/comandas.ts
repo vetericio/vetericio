@@ -21,7 +21,7 @@ export function dataLocalISO(data = new Date()): string {
   return `${ano}-${mes}-${dia}`;
 }
 
-export type OrigemComanda = "Recepção" | "Consultório" | "Internação";
+export type OrigemComanda = "Recepção" | "Consultório" | "Internação" | "Orçamento do Portal";
 export type StatusComanda = "Aberta" | "Finalizada";
 
 export type ItemComanda = {
@@ -53,6 +53,7 @@ export type Comanda = {
   id: string;
   numero: number;
   atendimentoRegistroId?: string;
+  orcamentoPortalId?: string;
   status: StatusComanda;
   origem: OrigemComanda;
   tutorId: string;

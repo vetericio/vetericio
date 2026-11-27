@@ -1,7 +1,8 @@
+import { ConferenciaCartoes } from "@/components/ConferenciaCartoes";
 import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import {
   ArrowLeft,
   BarChart3,
@@ -85,10 +86,11 @@ type TutorFinanceiro = {
   codigo?: string;
 };
 
-type Aba = "inicio" | "comandasDia" | "comandasAbertas" | "dia" | "mes" | "periodo" | "tutores" | "receber" | "lancamentos";
+type Aba = "inicio" | "comandasDia" | "comandasAbertas" | "dia" | "mes" | "periodo" | "tutores" | "receber" | "lancamentos" | "cartoes";
 
 const TUTORES_KEY = "oricse-tutores-v1";
 const opcoes = [
+  { id: "cartoes" as Aba, titulo: "Conciliação de cartões", texto: "Compare o valor previsto com o depósito", icone: CreditCard, cor: "bg-indigo-500/15 text-indigo-600" },
   { id: "comandasDia" as Aba, titulo: "Comandas do dia", texto: "Comandas criadas hoje", icone: ClipboardList, cor: "bg-emerald-500/15 text-emerald-600" },
   { id: "comandasAbertas" as Aba, titulo: "Comandas em aberto", texto: "Comandas pendentes de dias anteriores", icone: CreditCard, cor: "bg-rose-500/15 text-rose-600" },
   { id: "lancamentos" as Aba, titulo: "Lançamentos", texto: "Entradas, saídas e ajustes", icone: Plus, cor: "bg-cyan-500/15 text-cyan-600" },
@@ -219,6 +221,11 @@ export function Financeiro() {
   const demoAlvorada = useDemoAlvorada();
   const [aba, setAba] = useState<Aba>("inicio");
   const { clinicaId, pode } = usePermissoes();
+  const hash = useLocation({ select: (location) => location.hash });
+  const podeConferirCartoes = pode("caixa.financeiro.visualizar") || pode("caixa.financeiro.gerenciar");
+  useEffect(() => {
+    if (hash.replace(/^#/, "") === "cartoes" && podeConferirCartoes) setAba("cartoes");
+  }, [hash, podeConferirCartoes]);
   const [indicadoresAtivos,setIndicadoresAtivos]=useState<Awaited<ReturnType<typeof consultarIndicadoresPainel>>|null>(null);
   const [erroIndicadores,setErroIndicadores]=useState("");
   useEffect(()=>{
@@ -748,7 +755,7 @@ export function Financeiro() {
       {aba === "inicio" && (
         <>
           <nav aria-label="Áreas do Financeiro" className="mt-4 flex flex-wrap gap-2 rounded-2xl border bg-card p-3 shadow-sm">
-            {opcoes.map(({ id, titulo, icone: Icone }) => (
+            {opcoes.filter((o) => o.id !== "cartoes" || podeConferirCartoes).map(({ id, titulo, icone: Icone }) => (
               <button key={id} type="button" onClick={() => setAba(id)}
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-secondary/30 px-3 text-sm font-semibold text-foreground hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:flex-none">
                 <Icone size={17} className="shrink-0 text-primary" aria-hidden="true"/>
@@ -893,6 +900,10 @@ export function Financeiro() {
           <a href="/comandas" className="inline-flex rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground">Gerenciar comandas</a>
         </section>
       )}
+      {aba === "cartoes" && podeConferirCartoes && (
+        <ConferenciaCartoes key={clinicaId} clinicaId={clinicaId ?? ""} movimentos={caixaGeral} podeEditar={pode("caixa.financeiro.gerenciar")} carregando={carregandoCaixa} erroCaixa={erroCaixaGeral} />
+      )}
+
       {aba === "periodo" && (
         <section className="space-y-4">
           <div className="flex flex-wrap gap-4 rounded-2xl border bg-card p-4">
