@@ -1,69 +1,51 @@
-import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { useNavigate } from "@tanstack/react-router";
+import { descarregarOricseStorage } from "@/lib/oricse-storage";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { fecharPlantaoComHistorico } from "@/lib/painel-plantao.functions";
+import { turnoDoPainel } from "@/lib/painel-plantao";
 import { usePermissoes } from "./usePermissoes";
-import { useRegistros } from "./useRegistros";
-import { usePlantoes } from "./usePlantoes";
 import { usePlantaoAtual } from "./usePlantaoAtual";
-import { useCurvas } from "./useCurvas";
-import { useAnamneses } from "./useAnamneses";
-import { encerrarTodosAlarmes } from "./useAlarmes";
-import { CHAVE_BLOCO_NOTAS } from "@/components/BlocoNotas";
-import { chaveDoAnimal } from "@/lib/curva";
-import { diaDeHoje } from "@/lib/plantao";
-import type { Plantao } from "@/lib/ficha";
+import { descarregarRegistros } from "./useRegistros";
 
-/** Arquiva o plantão atual no histórico e limpa o aparelho para o próximo. */
+let fechando = false;
+
+/** Finaliza apenas o turno; as internações permanecem abertas. */
 export function useFinalizarPlantao() {
-  const { registros, setRegistros } = useRegistros();
-  const { setPlantoes } = usePlantoes();
-  const { plantao, limparPlantao } = usePlantaoAtual();
-  const { curvas, setCurvas } = useCurvas();
-  const { anamneses, setAnamneses } = useAnamneses();
-  const navigate = useNavigate();
-  const { pode, carregando: conferindoAcesso } = usePermissoes();
+  const { plantao } = usePlantaoAtual();
+  const { clinicaId, pode, carregando } = usePermissoes();
 
-  return () => {
-    if (conferindoAcesso || !pode("internacao.plantoes") || !pode("internacao.registrar")) return;
-    if (registros.length > 0) {
-      const novo: Plantao = {
-        id: crypto.randomUUID(),
-        data: plantao?.dia ?? diaDeHoje(),
-        turno: plantao?.turno ?? "",
-        registros,
-        // Guarda a foto das curvas destes animais para o PDF deste plantão.
-        curvas: curvas.filter((c) =>
-          registros.some((r) => chaveDoAnimal(r.animal, r.especie) === c.chave),
-        ),
-        // Guarda também a anamnese usada pelos animais deste plantão.
-        anamneses: anamneses.filter((a) =>
-          registros.some((r) =>
-            r.anamneseId === a.id ||
-            (
-              r.animal.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") ===
-                a.animal.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") &&
-              (!r.especie || !a.especie || r.especie === a.especie)
-            ),
-          ),
-        ),
-        criadoEm: new Date().toISOString(),
-      };
-      setPlantoes((ps) => [novo, ...ps]);
-      setRegistros([]);
+  return async () => {
+    if (fechando) return;
+    const turno = turnoDoPainel(plantao);
+    if (
+      !turno ||
+      !clinicaId ||
+      carregando ||
+      !pode("internacao.plantoes") ||
+      !pode("internacao.registrar")
+    ) {
+      toast.error("Sem plantão ativo ou sem permissão para finalizar.");
+      return;
     }
-    // As curvas valem até o fim do plantão: apaga todas e todos os alarmes
-    // (a foto das curvas destes animais já ficou guardada no histórico acima).
-    setCurvas([]);
-    encerrarTodosAlarmes();
-    // A anamnese vale só para um plantão: some ao fechar (histórico fica em Evolução).
-    setAnamneses([]);
+    fechando = true;
+    const id = toast.loading("Confirmando fechamento do plantão…");
     try {
-      oricseStorage.removeItem(CHAVE_BLOCO_NOTAS);
-    } catch {
-      /* sem acesso: ignora */
+      descarregarRegistros();
+      await descarregarOricseStorage();
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) throw new Error("Sessão expirada. Entre novamente.");
+      await fecharPlantaoComHistorico({
+        data: { accessToken: data.session.access_token, clinicaId, turno: turno.chave },
+      });
+      toast.success("Plantão arquivado. As internações continuam abertas.", { id });
+      window.location.assign("/plantoes");
+    } catch (erro) {
+      toast.error(
+        erro instanceof Error ? erro.message : "Fechamento não confirmado. Confira o histórico.",
+        { id },
+      );
+    } finally {
+      fechando = false;
     }
-    limparPlantao();
-    toast.success("Plantão finalizado.");
-    navigate({ to: "/plantoes" });
   };
 }

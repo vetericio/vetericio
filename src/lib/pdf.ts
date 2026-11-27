@@ -120,7 +120,7 @@ function desenharGrafico(doc: Doc, c: Curva, x: number, y: number, largura: numb
 
 export async function exportarPdf(
   registros: Registro[],
-  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[]; anamneses?: Anamnese[]; assinadoEm?: string; visualizar?: boolean },
+  opcoes?: { legenda?: string; arquivo?: string; curvas?: Curva[]; anamneses?: Anamnese[]; assinadoEm?: string; visualizar?: boolean; complemento?: string },
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -518,6 +518,21 @@ export async function exportarPdf(
 
     y += 12;
   });
+
+  if (opcoes?.complemento?.trim()) {
+    novaPaginaSeNecessario(48);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    for (const paragrafo of opcoes.complemento.trim().split("\n")) {
+      const linhas = doc.splitTextToSize(paragrafo, largura) as string[];
+      for (const linha of linhas) {
+        novaPaginaSeNecessario(18);
+        doc.text(linha, margem, y);
+        y += 16;
+      }
+      if (!paragrafo) y += 10;
+    }
+  }
 
   const { assinatura, carimbo } = await lerSelos();
   const assinadoEm =

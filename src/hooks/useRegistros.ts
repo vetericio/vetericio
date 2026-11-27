@@ -25,10 +25,14 @@ function definir(valor: Registro[] | ((atual: Registro[]) => Registro[])) {
   notificar();
   // Persistência fora do caminho crítico do clique/digitação.
   if (salvarPendente) clearTimeout(salvarPendente);
-  salvarPendente = setTimeout(() => {
-    salvarRegistros(estado);
-    salvarPendente = null;
-  }, 0);
+  salvarPendente = setTimeout(descarregarRegistros, 0);
+}
+
+export function descarregarRegistros() {
+  if (!salvarPendente) return;
+  clearTimeout(salvarPendente);
+  salvarPendente = null;
+  salvarRegistros(estado);
 }
 
 export function useRegistros() {

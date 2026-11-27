@@ -35,7 +35,7 @@ const entradaEvento = contextoSchema.extend({
 });
 type Contexto = z.infer<typeof contextoSchema>;
 
-async function autorizado({ clinicaId, accessToken }: Contexto) {
+async function autorizado({ clinicaId, accessToken }: Contexto, fechamento = false) {
   const [{ supabaseAdmin }, { clienteSupabaseUsuario, exigirPermissaoClinica }] = await Promise.all(
     [import("@/integrations/supabase/client.server"), import("@/lib/permissao-clinica.server")],
   );
@@ -49,7 +49,13 @@ async function autorizado({ clinicaId, accessToken }: Contexto) {
   // A agenda continua sob internacao.medicacoes; a fonte da ficha legada
   // exige internacao.registrar (mapeamento de chaves em oricse-storage.functions).
   await Promise.all([
-    exigirPermissaoClinica(supabaseAdmin, uid, clinicaId, ["internacao.medicacoes"], accessToken),
+    exigirPermissaoClinica(
+      supabaseAdmin,
+      uid,
+      clinicaId,
+      fechamento ? ["internacao.plantoes"] : ["internacao.medicacoes"],
+      accessToken,
+    ),
     exigirPermissaoClinica(supabaseAdmin, uid, clinicaId, ["internacao.registrar"], accessToken),
   ]);
   return { admin: supabaseAdmin, uid };
@@ -269,4 +275,86 @@ export const registrarEventoPlantao = createServerFn({ method: "POST" })
     throw new Error(
       "O servidor não confirmou o registro do plantão. Atualize a tela antes de tentar de novo.",
     );
+  });
+
+const chavesFechamento = [
+  "veterico-plantao-v1",
+  "veterico-registros-v1",
+  "veterico-curvas-v1",
+  "veterico-anamneses",
+  "veterico-plantoes-v1",
+  "veterico-bloco-notas",
+] as const;
+export const fecharPlantaoComHistorico = createServerFn({ method: "POST" })
+  .validator((entrada: unknown) =>
+    contextoSchema.extend({ turno: z.string().min(3).max(80) }).parse(entrada),
+  )
+  .handler(async ({ data }) => {
+    const { admin, uid } = await autorizado(data, true);
+    const { data: anterior, error: falhaAnterior } = await admin
+      .from("oricse_fechamentos_plantao" as never)
+      .select("turno_chave")
+      .eq("clinica_id", data.clinicaId)
+      .eq("turno_chave", data.turno)
+      .maybeSingle();
+    if (falhaAnterior) throw new Error("Não foi possível consultar o histórico do turno.");
+    if (anterior) return { ok: true as const };
+    const { data: estado, error: erro } = await admin
+      .from("oricse_dados_modulos")
+      .select("dados")
+      .eq("clinica_id", data.clinicaId)
+      .eq("chave", "estado_sistema")
+      .maybeSingle();
+    if (erro || !estado?.dados || typeof estado.dados !== "object" || Array.isArray(estado.dados)) {
+      throw new Error("Não foi possível confirmar o turno. Nenhum dado foi encerrado.");
+    }
+    const dados = estado.dados as Record<string, unknown>;
+    const leitura = Object.fromEntries(
+      chavesFechamento.map((chave) => [chave, dados[chave] ?? null]),
+    );
+    const ler = (chave: (typeof chavesFechamento)[number]) => {
+      const valor = leitura[chave];
+      if (valor !== null && typeof valor !== "string")
+        throw new Error("Estado de internação inválido.");
+      return parsePersistido(valor);
+    };
+    const lista = (chave: (typeof chavesFechamento)[number]) => {
+      const itens = ler(chave);
+      if (itens == null) return [];
+      if (!Array.isArray(itens))
+        throw new Error("O arquivo da internação está inválido. Nenhum dado foi encerrado.");
+      return itens;
+    };
+    const turno = turnoDoPainel(ler("veterico-plantao-v1"));
+    if (!turno || turno.chave !== data.turno)
+      throw new Error("O plantão mudou. Atualize antes de fechar.");
+    const arquivo = {
+      id: turno.chave,
+      data: turno.dia,
+      turno: turno.turno,
+      turnoChave: turno.chave,
+      registros: lista("veterico-registros-v1"),
+      curvas: lista("veterico-curvas-v1"),
+      anamneses: lista("veterico-anamneses"),
+      notas:
+        typeof leitura["veterico-bloco-notas"] === "string"
+          ? leitura["veterico-bloco-notas"]
+          : null,
+    };
+    const { data: salvo, error } = await admin.rpc(
+      "oricse_encerrar_plantao_atomicamente" as never,
+      {
+        p_clinica: data.clinicaId,
+        p_autor: uid,
+        p_turno: turno.chave,
+        p_leitura: leitura,
+        p_arquivo: arquivo,
+      } as never,
+    );
+    if (error?.code === "40001") throw new Error(error.message);
+    if (error || salvo !== true)
+      throw new Error(
+        "O banco não confirmou o fechamento. O plantão não foi descartado. Confira no histórico antes de tentar novamente.",
+      );
+    return { ok: true as const };
   });
