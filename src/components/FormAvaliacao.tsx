@@ -272,7 +272,12 @@ export function FormAvaliacao({
         <input
           value={valores.animal}
           onChange={(e) => {
-            onChange({ ...valores, animal: e.target.value, anamneseId: "" });
+            const animal = e.target.value;
+            if (anterior || animal === valores.animal) return;
+            if (valores.medicacoes?.length && !window.confirm(
+              "Trocar o paciente limpa os lançamentos de medicação não salvos deste formulário. Continuar?"
+            )) return;
+            onChange({ ...valores, animal, anamneseId: "", especie: "", peso: "", medicacoes: [] });
             setSugerindo(true);
           }}
           onFocus={() => setSugerindo(true)}
@@ -281,7 +286,7 @@ export function FormAvaliacao({
           autoComplete="off"
           className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-lg font-semibold text-foreground outline-none focus:border-ring"
         />
-        {sugestoes.length > 0 && (
+        {!anterior && sugestoes.length > 0 && (
           <ul className="mt-1.5 overflow-hidden rounded-lg border border-border bg-card">
             {sugestoes.map((a) => {
               const jaAdicionado = anamnesesJaAdicionadas.includes(a.id);
@@ -291,12 +296,17 @@ export function FormAvaliacao({
                     type="button"
                     disabled={jaAdicionado}
                     onClick={() => {
-                      if (jaAdicionado) return;
+                      if (jaAdicionado || anterior) return;
+                      const mesmoAnimal = a.id === valores.anamneseId;
+                      if (!mesmoAnimal && valores.medicacoes?.length && !window.confirm(
+                        "Trocar o paciente limpa os lançamentos de medicação não salvos deste formulário. Continuar?"
+                      )) return;
                       onChange({
                         ...valores,
                         animal: a.animal.trim(),
-                        especie: a.especie || valores.especie || "",
-                        peso: a.peso || valores.peso || "",
+                        especie: a.especie || "",
+                        peso: a.peso || "",
+                        ...(mesmoAnimal ? {} : { medicacoes: [] }),
                         anamneseId: a.id,
                       });
                       setSugerindo(false);
@@ -520,6 +530,7 @@ export function FormAvaliacao({
         </span>
         <Medicacoes
           lista={valores.medicacoes ?? []}
+          pacienteId={anterior?.id || valores.anamneseId || valores.animal}
           especie={valores.especie ?? ""}
           peso={valores.peso ?? ""}
           onChange={mudarMedicacoes}

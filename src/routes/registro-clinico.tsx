@@ -2,7 +2,7 @@ import { PainelExamesLaboratoriais } from "@/components/animal/PainelExamesLabor
 import { usePermissoes } from "@/hooks/usePermissoes";
 // Revisão clínica: cadastro, prontuário e exame oftalmológico vinculados ao atendimento.
 import { descarregarOricseStorage, oricseStorage } from "@/lib/oricse-storage";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BedDouble, Check, ChevronDown, ChevronUp, ClipboardPlus, FileText, FlaskConical, PawPrint, Plus, Save, Scissors, ShoppingCart, Stethoscope, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -119,12 +119,21 @@ function resumoMedicacoes(lista: Medicacao[]) {
 
 function formConsultaVazio():ConsultaForm { return { acessoRua:"", contatoAnimais:"", ambiente:"", moradia:"", ventilacao:"", apetite:"", exposicoes:[], vacinacao:"", vermifugacao:"", dieta:"", doencasPrevias:"", medicamentosRecentes:"", alergias:"", queixa:"", sistemas:Object.fromEntries(Object.keys(SISTEMAS).map(s=>[s,{sinais:[],observacoes:""}])), oftalmo:oftalmoVazio(), peso:"", temperatura:"", fc:"", fr:"", pas:"", glicemia:"", mucosas:"", hidratacao:"", dor:"", exameGeral:"", suspeitas:"", examesSolicitados:"", medicacoes:"", medicacoesDetalhadas:[], conduta:"", retorno:"", retornoEm:"" }; }
 
-function RegistroClinico(){
+function RegistroClinico() {
+  const busca = useLocation({ select: (location) => location.searchStr });
+  const params = new URLSearchParams(busca);
+  const animalId = params.get("animalId") || "";
+  const agendamentoId = params.get("agendamentoId") || "";
+  const tipo = params.get("tipo");
+  return <RegistroClinicoPaciente key={JSON.stringify([animalId, agendamentoId, tipo])}
+    animalId={animalId} agendamentoId={agendamentoId} tipo={tipo} />;
+}
+
+function RegistroClinicoPaciente({ animalId, agendamentoId, tipo }: {
+  animalId: string; agendamentoId: string; tipo: string | null;
+}) {
   const {pode,adminGlobal}=usePermissoes();
   const navigate=useNavigate();
-  const params=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");
-  const animalId=params.get("animalId")||"";
-  const agendamentoId=params.get("agendamentoId") || "";
   const registroId=useRef("");
   const emEnvio=useRef(false);
   const [salvandoConsulta,setSalvandoConsulta]=useState(false);
@@ -133,13 +142,14 @@ function RegistroClinico(){
   const [carregandoAnimal,setCarregandoAnimal]=useState(true);
   const [erroAnimal,setErroAnimal]=useState("");
   const [clinicaAnimalId,setClinicaAnimalId]=useState("");
-  const [modo,setModo]=useState<""|"consulta"|"procedimento">(()=>{ const tipo=params.get("tipo"); return tipo==="consulta"||tipo==="procedimento"?tipo:""; });
+  const [modo,setModo]=useState<""|"consulta"|"procedimento">(()=>tipo==="consulta"||tipo==="procedimento"?tipo:"");
   const [etapa,setEtapa]=useState(1);
   const [examesAtivados,setExamesAtivados]=useState(false);
   useEffect(()=>{if(etapa===6)setExamesAtivados(true);},[etapa]);
   const [receitaEmitida,setReceitaEmitida]=useState(false);
   const [receituarioAtivado,setReceituarioAtivado]=useState(false);
   const [consulta,setConsulta]=useState<ConsultaForm>(()=>formConsultaVazio());
+  const [rascunhoCarregado, setRascunhoCarregado] = useState(false);
   const [procedimento,setProcedimento]=useState<ProcedimentoForm>({tipo:"",indicacao:"",equipe:"",anestesia:"",achados:"",materiais:"",intercorrencias:"",posOperatorio:"",observacoes:""});
   const [acompanharPosCirurgico, setAcompanharPosCirurgico] = useState(false);
   const [altaPosCirurgico, setAltaPosCirurgico] = useState("");
@@ -160,9 +170,11 @@ function RegistroClinico(){
     if(!animalId)throw new Error("Identificação do animal ausente no link.");
     const {data:clinicaId,error:erroClinica}=await (supabaseBanco as any).rpc("oricse_resolver_clinica_cadastro_animal",{p_animal:animalId});
     if(erroClinica||!clinicaId)throw new Error(erroClinica?.message||"Clínica do animal não identificada.");
-    if(ativo)setClinicaAnimalId(clinicaId);
+    if(!ativo)return;
+    setClinicaAnimalId(clinicaId);
     const {error:erroContexto}=await (supabaseBanco as any).rpc("oricse_clinica_ativa_definir",{p_clinica:clinicaId});
     if(erroContexto)throw erroContexto;
+    if(!ativo)return;
     const {data,error}=await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela",{p_clinica:clinicaId,p_animal:animalId});
     if(error)throw error;
     if(!data?.animal)throw new Error("Animal não encontrado.");
@@ -179,8 +191,28 @@ function RegistroClinico(){
     }).catch(error => console.error("Não foi possível identificar o responsável pelo atendimento:", error));
     return () => { ativo = false; };
   }, []);
-  useEffect(()=>{ if(!animalId)return; try{const salvo=oricseStorage.getItem(chaveRascunho); if(salvo){const bruto=JSON.parse(salvo); setConsulta({...formConsultaVazio(),...bruto,peso:animal?.peso||bruto.peso||"",oftalmo:{...oftalmoVazio(),...(bruto.oftalmo||{})}})}else if(animal?.peso)setConsulta(atual=>({...atual,peso:atual.peso||animal.peso||""}));}catch{} },[animalId,animal?.peso]);
-  useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>oricseStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
+  useEffect(() => {
+    if (!animal || animal.id !== animalId || rascunhoCarregado) return;
+    const inicial = { ...formConsultaVazio(), peso: animal.peso || "" };
+    try {
+      const salvo = oricseStorage.getItem(chaveRascunho);
+      if (!salvo) setConsulta(inicial);
+      else {
+        const bruto = JSON.parse(salvo);
+        setConsulta({ ...inicial, ...bruto, peso: bruto.peso || inicial.peso,
+          oftalmo: { ...oftalmoVazio(), ...(bruto.oftalmo || {}) } });
+      }
+    } catch {
+      setConsulta(inicial);
+      return;
+    }
+    setRascunhoCarregado(true);
+  }, [animal, animalId, chaveRascunho, rascunhoCarregado]);
+  useEffect(() => {
+    if (!animalId || !rascunhoCarregado || modo !== "consulta") return;
+    const t = window.setTimeout(() => oricseStorage.setItem(chaveRascunho, JSON.stringify(consulta)), 250);
+    return () => window.clearTimeout(t);
+  }, [consulta, modo, animalId, chaveRascunho, rascunhoCarregado]);
   useEffect(() => {
     let ativo = true;
     let ultimaConsulta = 0;
@@ -590,7 +622,7 @@ function RegistroClinico(){
               </div>
               <details className="rounded-2xl border bg-white p-4">
                 <summary className="cursor-pointer text-sm font-black text-primary">Medicações da consulta com cálculo pelo peso (opcional)</summary>
-                <div className="mt-4"><Medicacoes lista={consulta.medicacoesDetalhadas} especie={/gato|fel/i.test(animal.especie||"")?"Gato":"Cachorro"} peso={consulta.peso||animal.peso||""} onChange={medicacoesDetalhadas=>setConsulta(f=>({...f,medicacoesDetalhadas,medicacoes:resumoMedicacoes(medicacoesDetalhadas)}))}/></div>
+                <div className="mt-4"><Medicacoes lista={consulta.medicacoesDetalhadas} pacienteId={animal.id} especie={animal.especie} peso={consulta.peso||animal.peso||""} onChange={medicacoesDetalhadas=>setConsulta(f=>({...f,medicacoesDetalhadas,medicacoes:resumoMedicacoes(medicacoesDetalhadas)}))}/></div>
                 <div className="mt-4"><Textarea label="Medicações / observações da consulta" value={consulta.medicacoes} onChange={v=>setConsulta({...consulta,medicacoes:v})} placeholder="Observações para o prontuário clínico..."/></div>
               </details>
               <ProtegidoPorSenha area="receituario" titulo="Receituário protegido">

@@ -1,3 +1,4 @@
+import { AVISO_URGENCIA_ACOMPANHAMENTO } from "@/lib/crm-mensagem-local";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { exigirPermissaoClinica } from "@/lib/permissao-clinica.server";
@@ -12,7 +13,7 @@ const padrao = {
   comunicacao: {
     confirmacaoConsulta: "Olá, {{tutor}}! Sua consulta de {{paciente}} está agendada para {{data}} às {{hora}}.",
     lembreteVacina: "Olá, {{tutor}}! Verifique a próxima vacina de {{paciente}} com nossa equipe.",
-    mensagemRetorno: "Olá, {{tutor}}! Está na hora de avaliar o retorno de {{paciente}}.",
+    mensagemRetorno: `Olá, {{tutor}}! Aqui é da equipe veterinária. Como {{paciente}} está? Podemos organizar o acompanhamento. ${AVISO_URGENCIA_ACOMPANHAMENTO}`,
     mensagemPosConsulta: "Olá, {{tutor}}! Como está {{paciente}} após o atendimento? Estamos à disposição.",
   },
 };

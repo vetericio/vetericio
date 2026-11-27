@@ -44,9 +44,11 @@ const [tutoresTela, migracaoLiberacao, seed] = await Promise.all([
   readFile("supabase/migrations/20261122201000_central_relacionamento_todas_clinicas.sql","utf8"),
   readFile("src/lib/drive-seed.ts","utf8"),
 ]);
-assert.match(tutoresTela,/autorizaMarketing: true/);
+assert.match(tutoresTela,/autorizaMarketing: false/);
+assert.doesNotMatch(tutoresTela,/autorizaMarketing: true/);
+assert.match(tutoresTela,/autorizaMarketing: dados\.autorizaMarketing/);
 assert.match(tutoresTela,/checked=\{form\.autorizaMarketing === true\}/);
-assert.match(tutoresTela,/Desmarque se o tutor não autorizou/);
+assert.match(tutoresTela,/Marque somente se o tutor autorizou/);
 assert.match(migracaoLiberacao,/update public\.oricse_plano_funcionalidades/);
 assert.match(migracaoLiberacao,/funcionalidade_codigo='crm\.inteligente'/);
 assert.match(migracaoLiberacao,/where clinica_id=\(select id from public\.clinicas where slug='vetericio'\)/);

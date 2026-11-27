@@ -6,7 +6,7 @@ import {
   gravarSelo,
   lerArquivoComoDataUrl,
   lerSelos,
-  nomeAssinado,
+  nomePdfComImagens,
   proporcao,
   removerFundoBranco,
   type TipoSelo,
@@ -205,7 +205,7 @@ export function AssinarDocumento() {
   const salvar = async () => {
     if (!doc) return;
     if (itens.length === 0) {
-      toast.error("Coloque a assinatura ou o carimbo antes de salvar");
+      toast.error("Insira a imagem de assinatura ou de carimbo antes de salvar.");
       return;
     }
     setSalvando(true);
@@ -247,12 +247,12 @@ export function AssinarDocumento() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = nomeAssinado(doc.nome);
+      a.download = nomePdfComImagens(doc.nome);
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-      toast.success("PDF assinado gerado");
+      toast.success("PDF com imagem de assinatura ou carimbo gerado. Não foi assinado digitalmente.");
     } catch {
-      toast.error("Não foi possível gerar o PDF assinado");
+      toast.error("Não foi possível gerar o PDF com as imagens.");
     } finally {
       setSalvando(false);
     }
@@ -322,8 +322,9 @@ export function AssinarDocumento() {
 
       <section className="rounded-2xl border border-border bg-card p-4">
         <h2 className="font-display text-base font-semibold text-foreground">
-          Assinar um documento
+          Aplicar imagem de assinatura ou carimbo
         </h2>
+        <p className="mt-1 text-sm text-muted-foreground">Este editor só insere imagens. Ele não assina digitalmente nem valida assinaturas. Se o PDF já tiver uma assinatura digital, preserve o original: editar o arquivo pode invalidá-la.</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label className="cursor-pointer rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
             Escolher arquivo
@@ -416,14 +417,14 @@ export function AssinarDocumento() {
                 onClick={() => void adicionar("assinatura")}
                 className="rounded-xl bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
               >
-                + Assinatura
+                + Imagem da assinatura
               </button>
               <button
                 type="button"
                 onClick={() => void adicionar("carimbo")}
                 className="rounded-xl bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground hover:bg-secondary/70"
               >
-                + Carimbo
+                + Imagem do carimbo
               </button>
               <button
                 type="button"
@@ -431,11 +432,11 @@ export function AssinarDocumento() {
                 disabled={salvando}
                 className="ml-auto rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
               >
-                {salvando ? "Gerando…" : "Salvar PDF assinado"}
+                {salvando ? "Gerando…" : "Baixar PDF com as imagens"}
               </button>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Salva como “{nomeAssinado(doc.nome)}”. O arquivo é processado neste aparelho.
+              Salva como “{nomePdfComImagens(doc.nome)}”. O arquivo é processado neste aparelho.
             </p>
           </>
         )}

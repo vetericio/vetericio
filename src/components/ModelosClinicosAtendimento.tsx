@@ -370,7 +370,7 @@ export function ModelosClinicosAtendimento() {
           <label className="flex items-start gap-3 rounded-lg border bg-background p-3 text-sm">
             <input type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-primary" checked={assinaturaConferida}
               onChange={(e)=>setAssinaturaConferida(e.target.checked)}/>
-            <span>Confirmo que conferi o conteúdo e a assinatura deste PDF. O ORICSE verifica a integridade do arquivo enviado, mas não valida criptograficamente certificados digitais ou assinaturas GOV.BR.</span>
+            <span>Confirmo que conferi o conteúdo e a assinatura deste PDF. O ORICSE confere se o arquivo recebido é o mesmo que você selecionou. Não valida a assinatura digital nem compara o conteúdo com o PDF emitido.</span>
           </label>
           <button type="button" onClick={()=>void registrarAssinado()}
             disabled={emitindo || !perfilCompleto || !assinaturaConferida || Boolean(pendencias.length)}

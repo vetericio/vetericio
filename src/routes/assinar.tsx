@@ -8,13 +8,13 @@ import { ProtegidoPorSenha } from "@/components/ProtegidoPorSenha";
 export const Route = createFileRoute("/assinar")({
   head: () => ({
     meta: [
-      { title: "Assinar um documento — Oricse" },
+      { title: "Aplicar imagem de assinatura ou carimbo — Oricse" },
       {
         name: "description",
         content:
-          "Assine e carimbe documentos no próprio aparelho: suba um PDF ou foto, posicione a assinatura e salve o PDF assinado.",
+          "Insira uma imagem de assinatura ou carimbo em um PDF ou foto. Este editor não realiza assinatura digital.",
       },
-      { property: "og:title", content: "Assinar um documento — Oricse" },
+      { property: "og:title", content: "Aplicar imagem de assinatura ou carimbo — Oricse" },
       {
         property: "og:description",
         content: "Aplique as imagens de assinatura e carimbo do seu perfil a um PDF ou foto.",
@@ -30,9 +30,9 @@ function PaginaAssinar() {
   const demoAlvorada = useDemoAlvorada();
   if (demoAlvorada) return <p className="mx-auto max-w-xl p-6 text-center">{AVISO_DEMO_DOCUMENTOS}</p>;
   return (
-    <ProtegidoPorSenha area="assinar" titulo="Assinatura protegida">
+    <ProtegidoPorSenha area="assinar" titulo="Editor de imagem de assinatura protegido">
       <main>
-        <h1 className="sr-only">Assinar um documento</h1>
+        <h1 className="sr-only">Aplicar imagem de assinatura ou carimbo</h1>
         <AssinarDocumento />
       </main>
     </ProtegidoPorSenha>

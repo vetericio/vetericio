@@ -63,7 +63,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
   const [novaData, setNovaData] = useState("");
   const [observacao, setObservacao] = useState("");
   const [preparandoMensagem, setPreparandoMensagem] = useState<string | null>(null);
-  const [editorMensagem, setEditorMensagem] = useState<{ retornoId: string; telefone: string; mensagem: string; comResumoClinico: boolean } | null>(null);
+  const [editorMensagem, setEditorMensagem] = useState<{ retornoId: string; telefone: string; mensagem: string } | null>(null);
   const versaoCarregamento = useRef(0);
   const clinicaSincronizada = useRef("");
   const timerSincronizacao = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -218,7 +218,6 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
         data: { accessToken: token, clinicaId, retornoId: item.id },
       });
       setEditorMensagem({ retornoId: item.id, ...resultado });
-      if (!resultado.comResumoClinico) toast.info("Sem queixa clínica identificada. Revise o texto genérico antes de enviar.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível preparar a mensagem.");
     } finally {
@@ -356,7 +355,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
             {podeOperar && item.permite_whatsapp && item.telefone &&
               <button type="button" disabled={Boolean(preparandoMensagem)} onClick={() => void abrirEditorMensagem(item)}
                 className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold text-primary disabled:opacity-50">
-                <Sparkles size={15}/> {preparandoMensagem === item.id ? "Preparando..." : editorMensagem?.retornoId === item.id ? "Fechar mensagem" : "Enviar mensagem"}
+                <Sparkles size={15}/> {preparandoMensagem === item.id ? "Preparando..." : editorMensagem?.retornoId === item.id ? "Fechar mensagem" : "Preparar mensagem"}
               </button>}
             {podeOperar && !item.permite_whatsapp &&
               <span className="inline-flex min-h-10 items-center rounded-lg border px-3 text-xs text-muted-foreground">WhatsApp não autorizado</span>}
@@ -375,7 +374,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
           {editorMensagem?.retornoId === item.id && <div className="mt-3 rounded-xl border border-primary/25 bg-muted/15 p-4">
             <label htmlFor={"crm-mensagem-" + item.id} className="block text-sm font-bold">Mensagem personalizada para {item.tutor_nome}</label>
             <p className="mt-1 text-xs text-muted-foreground">
-              Sugestão baseada no prontuário da clínica. Confira as informações e edite livremente antes de continuar.
+              Confira o destinatário e revise o texto antes de abrir o WhatsApp. A mensagem não é enviada pelo ORICSE.
             </p>
             <textarea id={"crm-mensagem-" + item.id} rows={7} maxLength={3000}
               value={editorMensagem.mensagem}
@@ -388,7 +387,7 @@ export function CrmRetornosPanel({ clinicaId, podeOperar, animalPreselecionadoId
                 onClick={e => { if (!editorMensagem.mensagem.trim()) e.preventDefault(); }}
                 className={"inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white " +
                   (!editorMensagem.mensagem.trim() ? "pointer-events-none opacity-40" : "hover:bg-emerald-800")}>
-                <MessageCircle size={17}/> Enviar WhatsApp
+                <MessageCircle size={17}/> Abrir no WhatsApp
               </a>
               <button type="button" onClick={() => setEditorMensagem(null)}
                 className="min-h-11 rounded-lg border px-4 text-sm font-semibold">Cancelar</button>

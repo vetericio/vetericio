@@ -249,39 +249,23 @@ export const prepararMensagemAcompanhamento = createServerFn({ method: "POST" })
       throw new Error("O tutor não possui um WhatsApp válido cadastrado.");
     }
 
-    // Usa o registro associado à consulta, se houver; caso contrário, a última consulta da ficha.
-    let consulta: any = null;
+    // Para o texto inicial basta a data de uma consulta exatamente vinculada.
+    // Não ler queixa, interpretar sintomas ou usar uma consulta diferente como fallback.
+    let dataConsulta: string | null = null;
     if (retorno.origem === "consulta" && retorno.origem_id) {
       const exata = await admin.from("oricse_animal_registros_extra")
-        .select("id,data,detalhe,dados_atendimento")
+        .select("data")
         .eq("clinica_id", data.clinicaId).eq("animal_id", animal.id)
         .eq("id", retorno.origem_id).eq("titulo", "Consulta").maybeSingle();
-      if (exata.error) throw new Error("Não foi possível consultar o atendimento.");
-      consulta = exata.data;
+      if (exata.error) throw new Error("Não foi possível consultar a data do atendimento.");
+      dataConsulta = exata.data?.data || null;
     }
-    if (!consulta) {
-      const recente = await admin.from("oricse_animal_registros_extra")
-        .select("id,data,detalhe,dados_atendimento")
-        .eq("clinica_id", data.clinicaId).eq("animal_id", animal.id)
-        .eq("titulo", "Consulta").order("data", { ascending: false })
-        .order("created_at", { ascending: false }).limit(1).maybeSingle();
-      if (recente.error) throw new Error("Não foi possível consultar o atendimento.");
-      consulta = recente.data;
-    }
-    const dadosConsulta = consulta?.dados_atendimento || {};
-    const queixa = typeof dadosConsulta.consulta?.queixa === "string"
-      ? dadosConsulta.consulta.queixa
-      : String(consulta?.detalhe || "").match(/(?:^|\n)Queixa principal:\s*([^\n]+)/i)?.[1] || "";
-    const autorNome = typeof dadosConsulta.autorNome === "string" ? dadosConsulta.autorNome : "";
     return {
       mensagem: comporMensagemAcompanhamento({
         tutorNome: tutor.nome || "",
         animalNome: animal.nome || "o paciente",
-        autorNome,
-        queixa,
-        dataConsulta: consulta?.data || null,
+        dataConsulta,
       }),
       telefone: numero,
-      comResumoClinico: Boolean(queixa.trim()),
     };
   });

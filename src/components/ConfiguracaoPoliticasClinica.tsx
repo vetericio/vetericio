@@ -1,3 +1,4 @@
+import { AVISO_URGENCIA_ACOMPANHAMENTO } from "@/lib/crm-mensagem-local";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Save, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -17,7 +18,7 @@ const PADRAO: PoliticasClinica = {
   comunicacao: {
     confirmacaoConsulta: "Olá, {{tutor}}! Sua consulta de {{paciente}} está agendada para {{data}} às {{hora}}.",
     lembreteVacina: "Olá, {{tutor}}! Verifique a próxima vacina de {{paciente}} com nossa equipe.",
-    mensagemRetorno: "Olá, {{tutor}}! Está na hora de avaliar o retorno de {{paciente}}.",
+    mensagemRetorno: `Olá, {{tutor}}! Aqui é da equipe veterinária. Como {{paciente}} está? Podemos organizar o acompanhamento. ${AVISO_URGENCIA_ACOMPANHAMENTO}`,
     mensagemPosConsulta: "Olá, {{tutor}}! Como está {{paciente}} após o atendimento? Estamos à disposição.",
   },
 };
