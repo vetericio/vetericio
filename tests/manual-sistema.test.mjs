@@ -72,3 +72,30 @@ test("a Ajuda está diretamente acima de Sair no menu comum", () => {
   const item = read("../src/components/ManualSistemaMenu.tsx");
   assert.match(item, /Manual do Sistema/);
 });
+
+test("a ativação temporária fornece só um diagnóstico; não autentica download", async () => {
+  let consultou = 0;
+  const buscar = criarEntregaManualSistema({
+    autorizar: async () => null,
+    abrir: async () => {
+      throw new Error("não deve ler bytes");
+    },
+    conexao: async (exporConta) => {
+      consultou++;
+      assert.equal(exporConta, true);
+      return { conta: "servico@example.test", disponivel: false };
+    },
+    ativar: async (chave) => chave === "chave-ficticia",
+  });
+  const ativacao = (chave, acao = "ativar-conexao") =>
+    new Request("https://oricse.example/api/ajuda/manual?acao=" + acao, {
+      headers: { "X-Oricse-Ativacao-Manual": chave },
+    });
+  assert.equal((await buscar(ativacao("errada"))).status, 404);
+  assert.equal((await buscar(ativacao("chave-ficticia", ""))).status, 401);
+  assert.equal(consultou, 0);
+  const r = await buscar(ativacao("chave-ficticia"));
+  assert.deepEqual(await r.json(), { conta: "servico@example.test", disponivel: false });
+  assert.equal(r.headers.get("Cache-Control"), "private, no-store");
+  assert.equal(consultou, 1);
+});

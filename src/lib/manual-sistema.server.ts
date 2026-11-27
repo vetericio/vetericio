@@ -12,22 +12,58 @@ const headersPrivados = {
 const resposta = (body: string, status: number, headers?: Record<string, string>) =>
   new Response(body, { status, headers: { ...headersPrivados, ...headers } });
 
+// Uma capacidade temporária, restrita ao diagnóstico do arquivo oficial.
+// Não concede acesso ao PDF, ao login, aos dados das clínicas ou a gravações.
+const ativacaoManual = {
+  expiraEm: Date.parse("2026-11-27T18:15:00Z"),
+  digest: "35483767d2d4e43364abd54a996f874aaa06bb11fa40ce107e1f177d4fb82133",
+};
+
+async function autorizarAtivacao(chave: string | null) {
+  if (Date.now() >= ativacaoManual.expiraEm || !chave || !/^[A-Za-z0-9_-]{43}$/.test(chave))
+    return false;
+  const bytes = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(chave)),
+  );
+  const esperado = ativacaoManual.digest.match(/../g)!;
+  let diferenca = 0;
+  for (let i = 0; i < bytes.length; i++) diferenca |= bytes[i] ^ parseInt(esperado[i], 16);
+  return diferenca === 0;
+}
+
 type Acesso = { podeBaixar: boolean; admin: boolean };
 type Dependencias = {
   autorizar: (jwt: string) => Promise<Acesso | null>;
   abrir: () => Promise<Response>;
   conexao: (exporConta: boolean) => Promise<{ conta: string; disponivel: boolean }>;
+  ativar?: (chave: string | null) => Promise<boolean>;
 };
 
-export function criarEntregaManualSistema({ autorizar, abrir, conexao }: Dependencias) {
+export function criarEntregaManualSistema({
+  autorizar,
+  abrir,
+  conexao,
+  ativar = autorizarAtivacao,
+}: Dependencias) {
   return async (request: Request) => {
     if (request.method !== "GET") return resposta("Método não disponível.", 405, { Allow: "GET" });
+    const acao = new URL(request.url).searchParams.get("acao");
+    if (acao === "ativar-conexao") {
+      if (!(await ativar(request.headers.get("x-oricse-ativacao-manual"))))
+        return resposta("Não encontrado.", 404);
+      try {
+        return resposta(JSON.stringify(await conexao(true)), 200, {
+          "Content-Type": "application/json; charset=utf-8",
+        });
+      } catch {
+        return resposta("Não foi possível verificar a conexão do manual.", 503);
+      }
+    }
     const jwt = request.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
     if (!jwt || jwt.length > 8192) return resposta("Entre no ORICSE para baixar o manual.", 401);
     try {
       const acesso = await autorizar(jwt);
       if (!acesso) return resposta("Entre no ORICSE para baixar o manual.", 401);
-      const acao = new URL(request.url).searchParams.get("acao");
       if (acao === "conexao") {
         if (!acesso.admin) return resposta("Sem acesso a esta configuração.", 403);
         return resposta(JSON.stringify(await conexao(true)), 200, {
