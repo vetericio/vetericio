@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { horaBanhoDoLink, instanteBanho } from "../src/lib/banho-horario.ts";
 import { pacoteElegivel } from "../src/lib/pacotes-banho-tosa.ts";
 
 test("sugere apenas pacote do serviço, dentro da vigência em São Paulo, com saldo livre", () => {
@@ -18,6 +19,23 @@ test("sugere apenas pacote do serviço, dentro da vigência em São Paulo, com s
   assert.equal(pacoteElegivel({ ...p, status: "suspenso" }, "banho", em, "2026-11-27"), false);
   assert.equal(pacoteElegivel(p, "banho", new Date(em.getTime() + 1000), "2026-11-27"), false);
   assert.equal(pacoteElegivel(p, "banho", em, "2026-11-28"), false);
+});
+
+test("aceita timestamp PostgREST com microssegundos e preserva o dia de Brasília do pacote", () => {
+  const timestampBanco = "2027-01-06T02:59:00.123456+00:00";
+  const pacote = {
+    status: "ativo",
+    disponiveis: 1,
+    servicoId: "banho",
+    validade: "2027-01-05",
+    vendidoEm: "2026-12-28T12:00:00Z",
+  };
+  assert.equal(instanteBanho(timestampBanco).toISOString(), "2027-01-06T02:59:00.123Z");
+  assert.equal(horaBanhoDoLink(timestampBanco), "2027-01-05T23:59");
+  assert.equal(pacoteElegivel(pacote, "banho", instanteBanho(timestampBanco), "2027-01-05"), true);
+  assert.equal(horaBanhoDoLink("2027-01-06T03:00:00.1Z"), "2027-01-06T00:00");
+  assert.equal(horaBanhoDoLink("2027-01-06T02:59:00.1234567+00:00"), "");
+  assert.equal(horaBanhoDoLink("2027-01-06T02:59:00.123456"), "");
 });
 
 const moduleUrl = process.env.ORICSE_PGLITE_MODULE;

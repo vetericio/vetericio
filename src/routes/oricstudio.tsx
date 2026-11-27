@@ -866,7 +866,7 @@ function OricStudio() {
                {contexto.pode_editar&&p.status==="aprovado"&&
                  <button type="button" onClick={()=>{setAgendandoId(agendandoId===p.id?null:p.id);setAgendandoConta("");setAgendandoMidias([]);}}
                    className="rounded-lg border px-3 py-2 text-xs font-semibold">Agendar no Instagram</button>}
-              {contexto.pode_editar && <button onClick={()=>void excluir(p)} className="rounded-lg border px-3 py-2 text-xs text-destructive"><Trash2 className="h-3.5 w-3.5"/></button>}
+              {contexto.pode_editar && <button type="button" aria-label={`Excluir publicação: ${p.titulo}`} onClick={()=>void excluir(p)} className="rounded-lg border px-3 py-2 text-xs text-destructive"><Trash2 className="h-3.5 w-3.5"/></button>}
             </div></div><p className="mt-3 whitespace-pre-line text-sm">{p.legenda||"Sem legenda."}</p>
             {agendandoId===p.id&&<div className="mt-3 space-y-3 rounded-xl border bg-secondary/30 p-4">
                <h4 className="text-sm font-semibold">Programar publicação — {p.titulo}</h4>
@@ -909,7 +909,7 @@ function OricStudio() {
             <strong className="ml-1 text-sm capitalize">{referenciaCalendario.toLocaleDateString("pt-BR",{month:"long",year:"numeric"})}</strong>
           </div>
           <div className="flex rounded-lg border p-1">
-            {(["dia","semana","mes"] as const).map(m=><button type="button" key={m} onClick={()=>setModoCalendario(m)}
+            {(["dia","semana","mes"] as const).map(m=><button type="button" key={m} aria-pressed={modoCalendario===m} onClick={()=>setModoCalendario(m)}
               className={`rounded-md px-3 py-2 text-xs font-semibold ${modoCalendario===m?"bg-primary text-primary-foreground":"hover:bg-secondary"}`}>
               {m==="mes"?"Mês":m==="semana"?"Semana":"Dia"}</button>)}
           </div>
