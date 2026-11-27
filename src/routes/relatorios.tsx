@@ -8,11 +8,13 @@ import { consultarRelatorio } from "@/lib/relatorios.functions";
 import { vincularOrcamentoRelatorio } from "@/lib/orcamentos-relatorio.functions";
 import {
   CODIGOS_FINANCEIROS,
+  CODIGOS_OPERACIONAIS,
+  CODIGOS_RELATORIOS,
   dataBR,
   diaNoFuso,
   periodoValido,
   RELATORIOS,
-  PERMISSAO_RELATORIOS,
+  permissaoDoRelatorio,
   type CodigoRelatorio,
   type DadosRelatorio,
   type TabelaRelatorio,
@@ -27,9 +29,14 @@ const titulo = (codigo: CodigoRelatorio) => RELATORIOS[Number(codigo) - 1];
 
 function Relatorios() {
   const { clinicaId, clinicaNome, clinicaSlug, pode, carregando } = usePermissoes();
-  const [atual, escolher] = useState<CodigoRelatorio>("01");
-  const autorizado =
-    !!clinicaId && clinicaNoPilotoRelatorios(clinicaSlug) && pode(PERMISSAO_RELATORIOS);
+  const [selecionado, escolher] = useState<CodigoRelatorio>("01");
+  const liberados = CODIGOS_RELATORIOS.filter((codigo) => pode(permissaoDoRelatorio(codigo)));
+  const atual = liberados.includes(selecionado) ? selecionado : liberados[0];
+  const autorizado = !!clinicaId && clinicaNoPilotoRelatorios(clinicaSlug) && !!atual;
+  const grupos = [
+    { nome: "Financeiros", codigos: CODIGOS_FINANCEIROS },
+    { nome: "Operacionais", codigos: CODIGOS_OPERACIONAIS },
+  ];
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 pb-24 pt-6 sm:px-6">
       <header>
@@ -46,22 +53,33 @@ function Relatorios() {
         <p role="status">
           {clinicaId && !clinicaNoPilotoRelatorios(clinicaSlug)
             ? AVISO_PILOTO_RELATORIOS
-            : "Selecione uma clínica com acesso financeiro para consultar os relatórios."}
+            : "Selecione uma clínica com permissão para consultar os relatórios."}
         </p>
       ) : (
         <>
-          <nav aria-label="Relatórios financeiros" className="flex flex-wrap gap-2">
-            {CODIGOS_FINANCEIROS.map((codigo) => (
-              <button
-                key={codigo}
-                type="button"
-                aria-pressed={atual === codigo}
-                onClick={() => escolher(codigo)}
-                className={`rounded-xl border px-3 py-2 text-sm font-semibold ${atual === codigo ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
-              >
-                {codigo} · {titulo(codigo)}
-              </button>
-            ))}
+          <nav aria-label="Tipos de relatórios" className="grid gap-4">
+            {grupos.map(({ nome, codigos }) => {
+              const visiveis = codigos.filter((codigo) => liberados.includes(codigo));
+              if (!visiveis.length) return null;
+              return (
+                <div key={nome} className="space-y-2">
+                  <h2 className="text-sm font-bold">{nome}</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {visiveis.map((codigo) => (
+                      <button
+                        key={codigo}
+                        type="button"
+                        aria-pressed={atual === codigo}
+                        onClick={() => escolher(codigo)}
+                        className={`rounded-xl border px-3 py-2 text-sm font-semibold ${atual === codigo ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
+                      >
+                        {codigo} · {titulo(codigo)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </nav>
           <Painel
             key={`${clinicaId}:${atual}`}
@@ -73,10 +91,10 @@ function Relatorios() {
             <summary className="cursor-pointer font-semibold">Catálogo dos 30 relatórios</summary>
             <ol className="mt-4 grid list-decimal gap-2 pl-6 text-sm sm:grid-cols-2">
               {RELATORIOS.map((nome, i) => {
-                const codigo = CODIGOS_FINANCEIROS[i];
+                const codigo = CODIGOS_RELATORIOS[i];
                 return (
                   <li key={nome}>
-                    {codigo ? (
+                    {codigo && liberados.includes(codigo) ? (
                       <button
                         type="button"
                         onClick={() => escolher(codigo)}
@@ -86,7 +104,10 @@ function Relatorios() {
                       </button>
                     ) : (
                       <>
-                        {nome} <span className="text-xs text-muted-foreground">(planejado)</span>
+                        {nome}{" "}
+                        <span className="text-xs text-muted-foreground">
+                          {codigo ? "(sem acesso)" : "(planejado)"}
+                        </span>
                       </>
                     )}
                   </li>
