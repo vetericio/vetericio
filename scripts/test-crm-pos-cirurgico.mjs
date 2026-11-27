@@ -2,13 +2,18 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 
-const src = readFileSync("src/lib/crm-pos-cirurgico.ts", "utf8");
-const compiled = ts.transpileModule(src, {
+const js = (source) => ts.transpileModule(readFileSync(source, "utf8"), {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, strict: true },
 }).outputText;
+const modulo = (compiled) => "data:text/javascript;base64," + Buffer.from(compiled).toString("base64");
+const mensagemModule = modulo(js("src/lib/crm-mensagem-local.ts"));
+const compiled = js("src/lib/crm-pos-cirurgico.ts").replace(
+  /(["'])\.\/crm-mensagem-local\1/g,
+  JSON.stringify(mensagemModule),
+);
 const { DIAS_POS_CIRURGICO_PADRAO, gerarTarefasPosCirurgicas, deslocarDia,
   normalizarProtocolo, mensagemPosCirurgica, precisaAvaliacaoPrioritaria, fonteClinicaElegivel } =
-  await import("data:text/javascript;base64," + Buffer.from(compiled).toString("base64"));
+  await import(modulo(compiled));
 
 const registro = {
   id: "cirurgia-001", clinicaId: "clinica-A", animalId: "animal-A", tutorId: "tutor-A",
@@ -44,7 +49,9 @@ const mensagem = mensagemPosCirurgica(
   gerarTarefasPosCirurgicas(registro)[0]
 );
 assert.match(mensagem,/Oi, Marina!/);
-assert.match(mensagem,/Dra. Camila/);
+assert.doesNotMatch(mensagem,/Dra\. Camila/);
+assert.match(mensagem,/equipe veterinária/);
+assert.match(mensagem,/Não aguarde resposta por aqui/);
 assert.match(mensagem,/Mel/);
 assert.doesNotMatch(mensagem,/diagnostic|curad[ao]|prescrev|dose de/i);
 assert.match(mensagemPosCirurgica({tutorNome:"",animalNome:""},gerarTarefasPosCirurgicas(registro)[0]),/equipe veterinária/);
