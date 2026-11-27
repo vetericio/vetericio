@@ -1,6 +1,6 @@
 # ORICSE: relatórios 13 a 30
 
-Implementação em branch local. Não publicada, sem alteração de permissões ou banco em produção.
+Disponibilidade restrita à Veterício. O acesso às fontes continua condicionado às permissões de cada relatório.
 Os relatórios 01 a 12 continuam disponíveis e independentes deste lote.
 
 | Nº | Relatório |
@@ -35,7 +35,9 @@ Os relatórios 01 a 12 continuam disponíveis e independentes deste lote.
   Ausência de trilha não equivale a zero ou a uma pendência confirmada. As notas na
   tela explicam o que está ausente, não se aplica ou é uma aproximação.
 - Receitas: filtro cruzado por campos e PDF vinculado pela API já autorizada. O
-  relatório não comprova assinatura qualificada, dispensa, cumprimento de prazo,
+  relatório usa emissão + 5 anos como referência interna da receita, não do
+  prontuário. Em receitas antigas, recupera o cadastro do emissor a partir do
+  PDF original vinculado. Não comprova assinatura qualificada, dispensa, cumprimento de prazo,
   validade ou autorização para descarte. Não classifica automaticamente medicamento
   controlado a partir de nome nem transforma movimentação de estoque em compra
   regulatória.

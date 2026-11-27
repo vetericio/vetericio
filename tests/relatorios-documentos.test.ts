@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   categoriaDocumento,
-  guardaProntuarioEstimada,
+  referenciaGuardaReceita,
   montarRelatorioDocumentos,
   montarRelatorioMovimentos,
   montarRelatorioReceitas,
@@ -10,11 +10,11 @@ import {
   type ReceitaRelatorio,
 } from "../src/lib/relatorios-documentos.ts";
 
-test("guarda usa a última consulta conhecida, sem fabricar uma data de descarte", () => {
-  assert.equal(guardaProntuarioEstimada("2024-02-29", "2024-02-28"), "2029-03-01");
-  assert.equal(guardaProntuarioEstimada("2026-11-27", "2022-11-11"), "2031-11-27");
-  assert.equal(guardaProntuarioEstimada("2026-01-01", "2026-11-27"), null);
-  assert.equal(guardaProntuarioEstimada(null, "2026-11-27"), null);
+test("guarda soma cinco anos à emissão, sem depender da consulta", () => {
+  assert.equal(referenciaGuardaReceita("2024-02-29"), "2029-03-01");
+  assert.equal(referenciaGuardaReceita("2022-11-11"), "2027-11-11");
+  assert.equal(referenciaGuardaReceita("2026-02-31"), null);
+  assert.equal(referenciaGuardaReceita(""), null);
 });
 
 test("receitas exibem quem, qual e onde; ação usa ID da receita somente com vínculo do paciente", () => {
@@ -45,6 +45,7 @@ test("receitas exibem quem, qual e onde; ação usa ID da receita somente com v�
         prescritor_crmv: null,
       },
     ],
+    autores: new Map([["receita", { nome: "Perfil atualizado", crmv: "CRMV-SP 456" }]]),
     animais: new Map([["animal", "Pet da ficha"]]),
     tutores: new Map([["tutor", "Tutor da emissão"]]),
     consultas: new Map([["animal", "2026-11-18"]]),
@@ -67,15 +68,16 @@ test("receitas exibem quem, qual e onde; ação usa ID da receita somente com v�
     "Prontuário interno",
     "PDF vinculado",
     "18/11/2026",
-    "18/11/2031",
+    "14/11/2031",
   ]);
-  assert.equal(tabela.linhas[1][7], "Não registrado");
+  assert.equal(tabela.linhas[1][7], "Não identificado");
   assert.equal(tabela.linhas[1][10], "Prontuário e Portal do Tutor");
   assert.equal(tabela.linhas[1][11], "Sem PDF vinculado");
   assert.equal(saida.indicadores[0].valor, 2);
   assert.equal(saida.indicadores[1].valor, 1);
   assert.equal(saida.indicadores[2].valor, 1);
-  assert.equal(saida.indicadores[3].valor, 1);
+  assert.equal(saida.indicadores[3].valor, 0);
+  assert.equal(tabela.linhas[1][13], "14/11/2031");
   assert.doesNotMatch(JSON.stringify(saida), /id-arquivo-privado|https?:\/\//);
 });
 

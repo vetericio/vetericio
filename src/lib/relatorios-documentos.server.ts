@@ -33,13 +33,13 @@ async function paginar<T>(consultar: (de: number, ate: number) => Consulta<T>): 
   throw new Error("Muitos registros. Reduza o período do relatório.");
 }
 
-async function porLotes<T>(
+async function porLotes<T, V>(
   valores: Array<string | null>,
   consultar: (ids: string[]) => Promise<T[]>,
-  chave: (r: T) => [string, string],
+  chave: (r: T) => [string, V],
 ) {
   const ids = [...new Set(valores.filter((v): v is string => v !== null))];
-  const mapa = new Map<string, string>();
+  const mapa = new Map<string, V>();
   for (let de = 0; de < ids.length; de += 100) {
     for (const registro of await consultar(ids.slice(de, de + 100))) {
       const [id, valor] = chave(registro);
@@ -113,15 +113,17 @@ export async function gerarRelatorioDocumentos({
         registros(
           supabaseAdmin
             .from("drive_arquivos")
-            .select("id,entidade_id")
+            .select("id,entidade_id,categoria,enviado_por")
             .eq("clinica_id", clinicaId)
             .eq("entidade_tipo", "animal")
             .eq("mime_type", "application/pdf")
             .not("entidade_id", "is", null)
             .in("id", ids),
         ),
-      (r) => [r.id, r.entidade_id || ""],
+      (r) => [r.id, { animal: r.entidade_id || "", categoria: r.categoria, autor: r.enviado_por }],
     );
+  const pdfsPorAnimal = (pdfs: Awaited<ReturnType<typeof registrosPdf>>) =>
+    new Map(Array.from(pdfs, ([id, pdf]) => [id, pdf.animal]));
   if (codigo === "24") {
     const documentos = (
       await paginar<DocumentoRelatorio>((de, ate) =>
@@ -138,7 +140,7 @@ export async function gerarRelatorioDocumentos({
       )
     ).filter((d) => categoriaDocumento(d.tipo, d.titulo));
     const [animais, pdfs] = await Promise.all([nomesAnimais(documentos), registrosPdf(documentos)]);
-    return montarRelatorioDocumentos(documentos, animais, pdfs);
+    return montarRelatorioDocumentos(documentos, animais, pdfsPorAnimal(pdfs));
   }
 
   const receitas = await paginar<ReceitaRelatorio>((de, ate) =>
@@ -188,12 +190,37 @@ export async function gerarRelatorioDocumentos({
     registrosPdf(receitas),
     registros(supabaseAdmin.from("clinicas").select("nome").eq("id", clinicaId).limit(1)),
   ]);
+  // Neste fluxo o upload autentica o emissor e usa o mesmo ID para o PDF e a receita.
+  // Não usar o usuário consultando, o RT ou quem fez a última consulta como substituto.
+  const autorRegistrado = (r: ReceitaRelatorio) => {
+    const pdf = r.drive_arquivo_id === r.id ? pdfs.get(r.id) : undefined;
+    return pdf?.animal === r.animal_id && pdf.categoria === "receitas" ? pdf.autor : null;
+  };
+  const pendentes = receitas.filter((r) => !r.prescritor_nome?.trim() || !r.prescritor_crmv?.trim());
+  const perfis = await porLotes(
+    pendentes.map(autorRegistrado),
+    (ids) =>
+      registros(
+        supabaseAdmin.from("oricse_pessoas").select("user_id,nome_completo,crmv,crmv_uf").in("user_id", ids),
+      ),
+    (p) => [p.user_id, p],
+  );
+  const autores = new Map<string, { nome: string; crmv: string }>();
+  for (const receita of pendentes) {
+    const id = autorRegistrado(receita);
+    const perfil = id ? perfis.get(id) : undefined;
+    const nome = perfil?.nome_completo?.trim();
+    const crmv = perfil?.crmv?.trim();
+    const uf = perfil?.crmv_uf?.trim().toUpperCase();
+    if (nome && crmv && uf) autores.set(receita.id, { nome, crmv: `CRMV-${uf} ${crmv}` });
+  }
   return montarRelatorioReceitas({
     receitas,
+    autores,
     animais,
     tutores,
     consultas,
-    pdfs,
+    pdfs: pdfsPorAnimal(pdfs),
     clinica: clinicas[0]?.nome || "Clínica selecionada",
   });
 }
