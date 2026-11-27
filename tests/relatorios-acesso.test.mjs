@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import ts from "typescript";
-import { CODIGOS_RELATORIOS } from "../src/lib/relatorios.ts";
+import { CODIGOS_RELATORIOS, PERMISSOES_ROTA_RELATORIOS } from "../src/lib/relatorios.ts";
 
 const urlLib = new URL("../src/lib/relatorios.ts", import.meta.url).href;
 const urlPiloto = new URL("../src/lib/relatorios-acesso.ts", import.meta.url).href;
@@ -20,6 +20,12 @@ const stub = (fn) =>
 const programa = outputText
   .replace('"./relatorios-agenda.server"', stub("gerarRelatorioAgenda"))
   .replace('"./relatorios-pet.server"', stub("gerarRelatorioPet"))
+  .replace('"./relatorios-equipe.server"', stub("gerarRelatorioEquipe"))
+  .replace('"./relatorios-clinica.server"', stub("gerarRelatorioClinica"))
+  .replace('"./relatorios-prevencao.server"', stub("gerarRelatorioPrevencao"))
+  .replace('"./relatorios-documentos.server"', stub("gerarRelatorioDocumentos"))
+  .replace('"./relatorios-clientes.server"', stub("gerarRelatorioClientes"))
+  .replace('"./relatorios-gestao.server"', stub("gerarRelatorioGestao"))
   .replace('import { supabaseAdmin } from "@/integrations/supabase/client.server";', "")
   .replace(
     'import { clienteSupabaseUsuario, exigirPermissaoClinica } from "@/lib/permissao-clinica.server";',
@@ -57,6 +63,12 @@ test("relatórios não iniciam consulta sem autenticação, vínculo e permissã
   globalThis[chave] = {
     gerarRelatorioAgenda: operativo,
     gerarRelatorioPet: operativo,
+    gerarRelatorioEquipe: operativo,
+    gerarRelatorioClinica: operativo,
+    gerarRelatorioPrevencao: operativo,
+    gerarRelatorioDocumentos: operativo,
+    gerarRelatorioClientes: operativo,
+    gerarRelatorioGestao: operativo,
     supabaseAdmin: {
       from(tabela) {
         const filtros = [];
@@ -144,8 +156,7 @@ test("relatórios não iniciam consulta sem autenticação, vínculo e permissã
 
     await assert.rejects(gerarRelatorio({ ...params, codigo: "08" }), /não autoriza/);
     await assert.rejects(gerarRelatorio({ ...params, codigo: "11" }), /não autoriza/);
-    permissoesConcedidas.add("recepcao.agenda");
-    permissoesConcedidas.add("hotelzinho.visualizar");
+    for (const permissao of PERMISSOES_ROTA_RELATORIOS) permissoesConcedidas.add(permissao);
     // Mesmo com as permissões de origem, a outra clínica não entra no piloto.
     for (const codigo of CODIGOS_RELATORIOS) {
       await assert.rejects(
@@ -179,6 +190,20 @@ test("relatórios não iniciam consulta sem autenticação, vínculo e permissã
     permissoesConcedidas.add("caixa.financeiro.visualizar");
     await gerarRelatorio({ ...params, codigo: "12" });
     assert.equal(chamadasOperacionais.at(-1).podeVerFinanceiro, true);
+
+    permissoesConcedidas.delete("internacao.registrar");
+    await assert.rejects(gerarRelatorio({ ...params, codigo: "18" }), /não autoriza/);
+    permissoesConcedidas.add("internacao.registrar");
+    permissoesConcedidas.delete("equipe.pagamentos.visualizar");
+    await gerarRelatorio({ ...params, codigo: "13" });
+    assert.equal(chamadasOperacionais.at(-1).podeVerFinanceiro, false);
+    permissoesConcedidas.add("equipe.pagamentos.visualizar");
+    for (const codigo of CODIGOS_RELATORIOS.slice(12)) {
+      await gerarRelatorio({ ...params, codigo });
+      assert.equal(chamadasOperacionais.at(-1).codigo, codigo);
+      assert.equal(chamadasOperacionais.at(-1).clinicaId, "clinica-a");
+    }
+
     assert.equal(consultas, 1);
   } finally {
     delete globalThis[chave];

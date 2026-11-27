@@ -9,7 +9,8 @@ import {
   gruposMonetarios,
   moeda,
   PERMISSAO_RELATORIOS,
-  permissaoDoRelatorio,
+  permissoesDoRelatorio,
+  PERMISSAO_RELATORIOS_EQUIPE,
   resumirCaixa,
   situacaoRecebivel,
   soma,
@@ -139,15 +140,22 @@ export async function gerarRelatorio({
 }: EntradaRelatorio): Promise<DadosRelatorio> {
   const { data: auth, error } = await supabaseAdmin.auth.getUser(accessToken);
   if (error || !auth.user) throw new Error("Sessão inválida. Entre novamente.");
-  await exigirPermissaoClinica(
-    supabaseAdmin,
-    auth.user.id,
-    clinicaId,
-    [permissaoDoRelatorio(codigo)],
-    accessToken,
-  );
-
   await exigirClinicaNoPilotoRelatorios(supabaseAdmin, clinicaId, auth.user.id);
+  const autorizar = (permissao: string) =>
+    exigirPermissaoClinica(supabaseAdmin, auth.user.id, clinicaId, [permissao], accessToken);
+  const permissoes = permissoesDoRelatorio(codigo);
+  if (!permissoes?.length) throw new Error("Relatório não disponível.");
+  await Promise.all(permissoes.map(autorizar));
+
+  const temPermissaoOpcional = async (permissao: string) => {
+    try {
+      await autorizar(permissao);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const contexto = { accessToken, clinicaId, inicio, fim };
 
   if (codigo === "08" || codigo === "09" || codigo === "10") {
     const { gerarRelatorioAgenda } = await import("./relatorios-agenda.server");
@@ -155,21 +163,35 @@ export async function gerarRelatorio({
   }
 
   if (codigo === "11" || codigo === "12") {
-    let podeVerFinanceiro = false;
-    try {
-      await exigirPermissaoClinica(
-        supabaseAdmin,
-        auth.user.id,
-        clinicaId,
-        [PERMISSAO_RELATORIOS],
-        accessToken,
-      );
-      podeVerFinanceiro = true;
-    } catch {
-      // A operação continua disponível, mas a leitura financeira falha fechada.
-    }
+    const podeVerFinanceiro = await temPermissaoOpcional(PERMISSAO_RELATORIOS);
     const { gerarRelatorioPet } = await import("./relatorios-pet.server");
-    return gerarRelatorioPet({ accessToken, clinicaId, codigo, inicio, fim, podeVerFinanceiro });
+    return gerarRelatorioPet({ ...contexto, codigo, podeVerFinanceiro });
+  }
+  if (codigo === "13" || codigo === "14" || codigo === "18") {
+    const podeVerFinanceiro =
+      codigo === "13" && (await temPermissaoOpcional(PERMISSAO_RELATORIOS_EQUIPE));
+    const { gerarRelatorioEquipe } = await import("./relatorios-equipe.server");
+    return gerarRelatorioEquipe({ ...contexto, codigo, podeVerFinanceiro });
+  }
+  if (codigo === "15" || codigo === "16" || codigo === "17") {
+    const { gerarRelatorioClinica } = await import("./relatorios-clinica.server");
+    return gerarRelatorioClinica({ ...contexto, codigo });
+  }
+  if (codigo === "19" || codigo === "20" || codigo === "21") {
+    const { gerarRelatorioPrevencao } = await import("./relatorios-prevencao.server");
+    return gerarRelatorioPrevencao({ ...contexto, codigo });
+  }
+  if (codigo === "22" || codigo === "23" || codigo === "24") {
+    const { gerarRelatorioDocumentos } = await import("./relatorios-documentos.server");
+    return gerarRelatorioDocumentos({ ...contexto, codigo });
+  }
+  if (codigo === "25" || codigo === "26" || codigo === "28") {
+    const { gerarRelatorioClientes } = await import("./relatorios-clientes.server");
+    return gerarRelatorioClientes({ ...contexto, codigo });
+  }
+  if (codigo === "27" || codigo === "29" || codigo === "30") {
+    const { gerarRelatorioGestao } = await import("./relatorios-gestao.server");
+    return gerarRelatorioGestao({ ...contexto, codigo });
   }
 
   const banco = clienteSupabaseUsuario(accessToken);

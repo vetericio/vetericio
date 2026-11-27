@@ -3,8 +3,9 @@ import test from "node:test";
 import {
   CODIGOS_FINANCEIROS,
   CODIGOS_RELATORIOS,
-  permissaoDoRelatorio,
+  permissoesDoRelatorio,
   competencia,
+  filtrarLinhasRelatorio,
   fluxoRegistrado,
   gruposMonetarios,
   periodoValido,
@@ -35,13 +36,17 @@ const movimento = (
   ...campos,
 });
 
-test("catálogo conserva 30 entradas e entrega 01 a 12, na ordem", () => {
+test("catálogo conserva 30 entradas e mantém os códigos 01 a 30, na ordem", () => {
   assert.equal(RELATORIOS.length, 30);
   assert.deepEqual(CODIGOS_FINANCEIROS, ["01", "02", "03", "04", "05", "06", "07"]);
-  assert.deepEqual(CODIGOS_RELATORIOS.slice(7), ["08", "09", "10", "11", "12"]);
-  assert.equal(permissaoDoRelatorio("07"), "caixa.financeiro.visualizar");
-  assert.equal(permissaoDoRelatorio("08"), "recepcao.agenda");
-  assert.equal(permissaoDoRelatorio("12"), "hotelzinho.visualizar");
+  assert.deepEqual(
+    CODIGOS_RELATORIOS,
+    Array.from({ length: 30 }, (_, i) => String(i + 1).padStart(2, "0")),
+  );
+  assert.deepEqual(permissoesDoRelatorio("07"), ["caixa.financeiro.visualizar"]);
+  assert.deepEqual(permissoesDoRelatorio("08"), ["recepcao.agenda"]);
+  assert.deepEqual(permissoesDoRelatorio("12"), ["hotelzinho.visualizar"]);
+  assert.deepEqual(permissoesDoRelatorio("18"), ["internacao.plantoes", "internacao.registrar"]);
 });
 
 test("período admite só dias reais e no máximo 93 dias", () => {
@@ -129,4 +134,27 @@ test("falta de vencimento não é inadimplência", () => {
   assert.equal(situacaoRecebivel("2026-11-26", "2026-11-27"), "Vencido");
   assert.equal(situacaoRecebivel("2026-11-27", "2026-11-27"), "Vence hoje");
   assert.equal(situacaoRecebivel("2026-11-28", "2026-11-27"), "A vencer");
+});
+
+test("a busca cruza campos, ignora acentos e mantém a ação na linha original", () => {
+  const tabela = {
+    titulo: "Receitas",
+    colunas: ["Prescritor", "Tipo"],
+    linhas: [
+      ["Maria", "Simples"],
+      ["João", "Controlada"],
+      ["João", "Simples"],
+    ],
+    pdfReceitas: [{ linha: 1, documentoId: "receita-do-joao" }],
+  };
+  assert.deepEqual(filtrarLinhasRelatorio(tabela, "joao contro"), [
+    { linha: 1, celulas: ["João", "Controlada"] },
+  ]);
+  assert.equal(
+    tabela.pdfReceitas.find(
+      ({ linha }) => linha === filtrarLinhasRelatorio(tabela, "joao contro")[0].linha,
+    )?.documentoId,
+    "receita-do-joao",
+  );
+  assert.deepEqual(filtrarLinhasRelatorio(tabela, "não consta"), []);
 });

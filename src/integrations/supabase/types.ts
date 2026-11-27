@@ -2554,6 +2554,8 @@ export type Database = {
           motivo_ocultacao: string | null
           motivo_outro: string | null
           numero: string | null
+          prescritor_crmv: string | null
+          prescritor_nome: string | null
           resumo: string | null
           tipo: string
           titulo: string
@@ -2571,6 +2573,8 @@ export type Database = {
           motivo_ocultacao?: string | null
           motivo_outro?: string | null
           numero?: string | null
+          prescritor_crmv?: string | null
+          prescritor_nome?: string | null
           resumo?: string | null
           tipo?: string
           titulo?: string
@@ -2588,6 +2592,8 @@ export type Database = {
           motivo_ocultacao?: string | null
           motivo_outro?: string | null
           numero?: string | null
+          prescritor_crmv?: string | null
+          prescritor_nome?: string | null
           resumo?: string | null
           tipo?: string
           titulo?: string

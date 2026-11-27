@@ -30,6 +30,7 @@ const trocas = new Map([
       "export const vincularOrcamentoRelatorio=()=>{throw new Error('A renderização inicial não deve gravar dados.')};",
     ),
   ],
+  ["@/lib/portal-document.functions", modulo("export const baixarDocumentoPortal=()=>null;")],
   ["@/lib/relatorios-acesso", url("../src/lib/relatorios-acesso.ts")],
   ["@/lib/relatorios", url("../src/lib/relatorios.ts")],
   ["react", import.meta.resolve("react")],
@@ -88,4 +89,11 @@ test("Hotel e banho e tosa aparecem para o acesso operacional, sem abas financei
   assert.match(html, /aria-pressed="true"[^>]*>11/);
   assert.match(html, /12 · Hotelzinho/);
   assert.doesNotMatch(html, /07 · Orçamentos|08 · Ocupação/);
+});
+
+test("Relatórios com duas permissões não aparecem para quem possui apenas uma", () => {
+  const parcial = simular("vetericio", ["internacao.plantoes", "hotelzinho.visualizar"]);
+  assert.doesNotMatch(parcial, /18 · Plantões/);
+  const completo = simular("vetericio", ["internacao.plantoes", "internacao.registrar"]);
+  assert.match(completo, /18 · Plantões/);
 });

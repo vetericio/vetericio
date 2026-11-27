@@ -5,16 +5,21 @@ import { BarChart3 } from "lucide-react";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase } from "@/integrations/supabase/client";
 import { consultarRelatorio } from "@/lib/relatorios.functions";
+import { baixarDocumentoPortal } from "@/lib/portal-document.functions";
 import { vincularOrcamentoRelatorio } from "@/lib/orcamentos-relatorio.functions";
 import {
   CODIGOS_FINANCEIROS,
+  CODIGOS_EQUIPE,
+  CODIGOS_CLINICOS,
+  CODIGOS_GESTAO,
   CODIGOS_OPERACIONAIS,
   CODIGOS_RELATORIOS,
   dataBR,
   diaNoFuso,
+  filtrarLinhasRelatorio,
   periodoValido,
   RELATORIOS,
-  permissaoDoRelatorio,
+  permissoesDoRelatorio,
   type CodigoRelatorio,
   type DadosRelatorio,
   type TabelaRelatorio,
@@ -30,12 +35,17 @@ const titulo = (codigo: CodigoRelatorio) => RELATORIOS[Number(codigo) - 1];
 function Relatorios() {
   const { clinicaId, clinicaNome, clinicaSlug, pode, carregando } = usePermissoes();
   const [selecionado, escolher] = useState<CodigoRelatorio>("01");
-  const liberados = CODIGOS_RELATORIOS.filter((codigo) => pode(permissaoDoRelatorio(codigo)));
+  const liberados = CODIGOS_RELATORIOS.filter((codigo) =>
+    permissoesDoRelatorio(codigo).every(pode),
+  );
   const atual = liberados.includes(selecionado) ? selecionado : liberados[0];
   const autorizado = !!clinicaId && clinicaNoPilotoRelatorios(clinicaSlug) && !!atual;
   const grupos = [
     { nome: "Financeiros", codigos: CODIGOS_FINANCEIROS },
     { nome: "Operacionais", codigos: CODIGOS_OPERACIONAIS },
+    { nome: "Equipe", codigos: CODIGOS_EQUIPE },
+    { nome: "Clínica e documentação", codigos: CODIGOS_CLINICOS },
+    { nome: "Gestão e auditoria", codigos: CODIGOS_GESTAO },
   ];
   return (
     <main className="mx-auto w-full max-w-7xl space-y-6 px-4 pb-24 pt-6 sm:px-6">
@@ -86,6 +96,7 @@ function Relatorios() {
             codigo={atual}
             clinicaId={clinicaId}
             podeVincular={pode("caixa.financeiro.gerenciar")}
+            podeBaixarReceitas={atual === "22" && pode("consultorio.atendimentos")}
           />
           <details className="rounded-xl border bg-card p-4">
             <summary className="cursor-pointer font-semibold">Catálogo dos 30 relatórios</summary>
@@ -131,10 +142,12 @@ function Painel({
   codigo,
   clinicaId,
   podeVincular,
+  podeBaixarReceitas,
 }: {
   codigo: CodigoRelatorio;
   clinicaId: string;
   podeVincular: boolean;
+  podeBaixarReceitas: boolean;
 }) {
   const hoje = diaNoFuso(new Date().toISOString());
   const [inicio, setInicio] = useState(hoje.slice(0, 7) + "-01");
@@ -147,6 +160,40 @@ function Painel({
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
   const [versao, setVersao] = useState(0);
+  const [baixandoReceita, setBaixandoReceita] = useState(false);
+
+  async function baixarReceita(documentoId: string) {
+    if (!podeBaixarReceitas || baixandoReceita) return;
+    setErro("");
+    setBaixandoReceita(true);
+    let url: string | undefined;
+    try {
+      const arquivo = await baixarDocumentoPortal({
+        data: {
+          accessToken: await tokenAtual(),
+          documentoId,
+          clinicaEquipeId: clinicaId,
+          tipo: "receita",
+        },
+      });
+      const bytes = Uint8Array.from(atob(arquivo.base64), (c) => c.charCodeAt(0));
+      url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = arquivo.nome || "receita.pdf";
+      link.click();
+    } catch {
+      setErro(
+        "Não foi possível baixar o PDF da receita. Confira o vínculo do arquivo e sua permissão.",
+      );
+    } finally {
+      if (url) {
+        const download = url;
+        window.setTimeout(() => URL.revokeObjectURL(download), 1000);
+      }
+      setBaixandoReceita(false);
+    }
+  }
 
   async function carregar(de: string, ate: string) {
     setResultado(undefined);
@@ -248,7 +295,12 @@ function Painel({
             </p>
           ))}
           {resultado.dados.tabelas.map((t) => (
-            <Tabela key={`${versao}:${t.titulo}`} tabela={t} />
+            <Tabela
+              key={`${versao}:${t.titulo}`}
+              tabela={t}
+              baixarReceita={podeBaixarReceitas ? baixarReceita : undefined}
+              baixandoReceita={baixandoReceita}
+            />
           ))}
         </>
       )}
@@ -256,16 +308,23 @@ function Painel({
   );
 }
 
-function Tabela({ tabela }: { tabela: TabelaRelatorio }) {
+function Tabela({
+  tabela,
+  baixarReceita,
+  baixandoReceita,
+}: {
+  tabela: TabelaRelatorio;
+  baixarReceita?: (documentoId: string) => Promise<void>;
+  baixandoReceita?: boolean;
+}) {
   const porPagina = 50;
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(0);
-  const termo = busca.toLocaleLowerCase("pt-BR").trim();
-  const filtradas = termo
-    ? tabela.linhas.filter((l) =>
-        l.some((c) => String(c).toLocaleLowerCase("pt-BR").includes(termo)),
-      )
-    : tabela.linhas;
+  const arquivos =
+    baixarReceita && tabela.pdfReceitas?.length
+      ? new Map(tabela.pdfReceitas.map(({ linha, documentoId }) => [linha, documentoId]))
+      : null;
+  const filtradas = filtrarLinhasRelatorio(tabela, busca);
   return (
     <section className="space-y-2 border-t pt-4">
       <h2 className="font-bold">{tabela.titulo}</h2>
@@ -300,18 +359,43 @@ function Tabela({ tabela }: { tabela: TabelaRelatorio }) {
                     {c}
                   </th>
                 ))}
+                {arquivos && (
+                  <th scope="col" className="px-3 py-2">
+                    Arquivo
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
-              {filtradas.slice(pagina * porPagina, (pagina + 1) * porPagina).map((l, i) => (
-                <tr key={i} className="border-t align-top">
-                  {l.map((c, j) => (
-                    <td key={j} className="min-w-24 px-3 py-2">
-                      {c}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {filtradas
+                .slice(pagina * porPagina, (pagina + 1) * porPagina)
+                .map(({ celulas, linha }) => (
+                  <tr key={linha} className="border-t align-top">
+                    {celulas.map((c, j) => (
+                      <td key={j} className="min-w-24 px-3 py-2">
+                        {c}
+                      </td>
+                    ))}
+                    {arquivos && (
+                      <td className="min-w-24 px-3 py-2">
+                        {arquivos.has(linha) ? (
+                          <button
+                            type="button"
+                            disabled={baixandoReceita}
+                            onClick={() => {
+                              void baixarReceita?.(arquivos.get(linha)!);
+                            }}
+                            className="font-medium text-primary underline disabled:opacity-50"
+                          >
+                            Baixar PDF
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
