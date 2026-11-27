@@ -10,7 +10,7 @@ const calendario = new Intl.DateTimeFormat("sv-SE", {
   hourCycle: "h23",
 });
 const local = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
-const absoluto = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/i;
+const absoluto = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})$/i;
 
 export function horaGradeBanho(instante: string | Date) {
   const d = new Date(instante);

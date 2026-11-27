@@ -1,3 +1,4 @@
+import { instanteBanho } from "@/lib/banho-horario";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { supabaseBanco } from "@/integrations/supabase/client";
@@ -174,7 +175,7 @@ export function SelecionarPacoteBanho({
   const { itens, erro, carregando } = usePacotes(clinicaId, animalId, false, revisao);
   if (!animalId || !servicoId) return null;
   const elegiveis = itens.filter((p) =>
-    pacoteElegivel(p, servicoId, new Date(inicio), diaDoPacote(Date.now())),
+    pacoteElegivel(p, servicoId, instanteBanho(inicio), diaDoPacote(Date.now())),
   );
   return (
     <div className="space-y-1">

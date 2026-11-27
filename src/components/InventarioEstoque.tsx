@@ -42,6 +42,11 @@ export function InventarioEstoque({ clinicaId, podeContar, aoContar }: Props) {
   const [versao, setVersao] = useState(0);
   const [produtos, setProdutos] = useState<ProdutoInventario[]>([]);
   const [limite, setLimite] = useState(false);
+  const [paginaHistorico, setPaginaHistorico] = useState(0);
+  const [maisHistorico, setMaisHistorico] = useState(false);
+  const [paginaLida, setPaginaLida] = useState("");
+  const chaveHistorico = `${clinicaId}:${paginaHistorico}:${versao}`;
+  const historicoPronto = paginaLida === chaveHistorico;
   const [historico, setHistorico] = useState<RegistroInventario[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erroListagem, setErroListagem] = useState("");
@@ -83,10 +88,14 @@ export function InventarioEstoque({ clinicaId, podeContar, aoContar }: Props) {
             .eq("clinica_id", clinicaId)
             .order("registrado_em", { ascending: false })
             .order("id", { ascending: false })
-            .limit(50)
+            .range(paginaHistorico * 50, paginaHistorico * 50 + 50)
             .abortSignal(abort.signal);
           if (r.error) throw r.error;
-          if (!abort.signal.aborted) setHistorico(r.data ?? []);
+          if (!abort.signal.aborted) {
+            setMaisHistorico((r.data?.length ?? 0) > 50);
+            setHistorico(r.data?.slice(0, 50) ?? []);
+            setPaginaLida(chaveHistorico);
+          }
         } else {
           const r = await banco
             .rpc("oricse_estoque_observado", {
@@ -108,7 +117,9 @@ export function InventarioEstoque({ clinicaId, podeContar, aoContar }: Props) {
       }
     })();
     return () => abort.abort();
-  }, [clinicaId, consulta, modo, versao]);
+  }, [clinicaId, consulta, modo, versao, paginaHistorico, chaveHistorico]);
+
+  useEffect(() => { setPaginaHistorico(0); }, [clinicaId]);
 
   useEffect(() => {
     if (produto) campoContagem.current?.focus();
@@ -128,6 +139,10 @@ export function InventarioEstoque({ clinicaId, podeContar, aoContar }: Props) {
     if (salvamento.current) return;
     limparContagem();
     setConfirmacao("");
+    if (novo === "historico") {
+      setPaginaHistorico(0);
+      setPaginaLida("");
+    }
     setModo(modo === novo ? null : novo);
   }
 
@@ -309,9 +324,9 @@ export function InventarioEstoque({ clinicaId, podeContar, aoContar }: Props) {
               </button>
             </div>
           ) : modo === "historico" ? (
-            <>
+            !historicoPronto ? <p role="status" className="text-sm text-muted-foreground">Carregando histórico…</p> : <>
               <p className="text-sm text-muted-foreground">
-                Até 50 contagens recentes. O operador é identificado pela sessão; o registro
+                50 contagens por página. O operador é identificado pela sessão; o registro
                 original não pode ser editado nesta tela.
               </p>
               {!historico.length && <p className="text-sm">Nenhuma contagem registrada.</p>}
@@ -331,6 +346,11 @@ export function InventarioEstoque({ clinicaId, podeContar, aoContar }: Props) {
                   </li>
                 ))}
               </ul>
+              <nav aria-label="Páginas do histórico de contagens" className="flex items-center justify-between gap-2">
+                <button type="button" className={botao} disabled={paginaHistorico===0} onClick={() => setPaginaHistorico(p => p-1)}>Anterior</button>
+                <span className="text-sm">Página {paginaHistorico+1}</span>
+                <button type="button" className={botao} disabled={!maisHistorico} onClick={() => setPaginaHistorico(p => p+1)}>Próxima</button>
+              </nav>
             </>
           ) : modo === "contagem" && produto ? (
             <form
