@@ -134,7 +134,7 @@ function OrcamentoVendaExpressa() {
           if (ativo) toast.error("Não foi possível carregar a identidade e o tema configurados para o orçamento.");
           return null;
         }),
-    ]).then(([c, logo, p, t, a, documento]) => {
+    ]).then(async ([c, logo, p, t, a, documento]) => {
       if (!ativo) return;
       if (c.error || p.error) throw new Error(c.error?.message || p.error?.message);
       setClinica(c.data || {});
@@ -143,18 +143,34 @@ function OrcamentoVendaExpressa() {
       setIdentidadeDocumento(documento?.identidade ?? null);
       const fundoUrl = urlFundoDocumento(modeloEmitido.fundo);
       if (fundoUrl) {
-        const imagemFundo = new Image();
-        imagemFundo.onload = () => { if (ativo) setFundoClinica(imagemFundo); };
-        imagemFundo.src = fundoUrl;
+        const imagemFundo = await new Promise<HTMLImageElement | null>(resolve => {
+          const imagem = new Image();
+          imagem.onload = () => resolve(imagem);
+          imagem.onerror = () => resolve(null);
+          imagem.src = fundoUrl;
+        });
+        if (ativo) setFundoClinica(imagemFundo);
       }
-      const logoUrl = modeloEmitido.usarLogo
-        ? documento?.identidade.logoUrl || documento?.identidade.logoAlternativa || logo.data?.logo_url
-        : "";
-      if (logoUrl) {
-        const imagem = new Image();
-        imagem.crossOrigin = "anonymous";
-        imagem.onload = () => { if (ativo) setLogoClinica(imagem); };
-        imagem.src = logoUrl;
+      if (modeloEmitido.usarLogo) {
+        const identidadeLogo: IdentidadeDocumento = documento?.identidade ?? {
+          nome: texto(c.data?.nome), razaoSocial: "", cnpj: "", crmv: "", endereco: "",
+          telefone: "", email: "", municipio: "", logoUrl: texto(logo.data?.logo_url),
+        };
+        const identidadeComAlternativa = {
+          ...identidadeLogo,
+          logoAlternativa: identidadeLogo.logoAlternativa || texto(logo.data?.logo_url),
+        };
+        const { prepararLogoDocumento } = await import("@/lib/modelos-documentos-pdf");
+        const logoPronta = await prepararLogoDocumento(identidadeComAlternativa, true);
+        if (logoPronta) {
+          const imagemLogo = await new Promise<HTMLImageElement | null>(resolve => {
+            const imagem = new Image();
+            imagem.onload = () => resolve(imagem);
+            imagem.onerror = () => resolve(null);
+            imagem.src = logoPronta;
+          });
+          if (ativo) setLogoClinica(imagemLogo);
+        }
       }
       setProdutos((p.data ?? []).map(item => ({
         id: item.id,
@@ -198,11 +214,13 @@ function OrcamentoVendaExpressa() {
     const ctx = canvas.getContext("2d"); if (!ctx) return null;
     ctx.fillStyle = corPapel; ctx.fillRect(0, 0, largura, altura);
     if (fundoClinica) {
-      ctx.globalAlpha = 0.12;
-      ctx.drawImage(fundoClinica, 0, 0, largura, altura);
-      ctx.globalAlpha = 1;
+      const alturaPagina = 1754;
+      for (let y = 0; y < altura; y += alturaPagina) {
+        ctx.drawImage(fundoClinica, 0, y, largura, alturaPagina);
+      }
     }
-    ctx.fillStyle = corMarca; ctx.fillRect(0, 0, largura, 16);
+    if (tema) desenharTemaPremiumOrcamento(ctx, tema.id, largura, altura, corMarca);
+    else if (!fundoClinica) { ctx.fillStyle = corMarca; ctx.fillRect(0, 0, largura, 16); }
     if (logoClinica) ctx.drawImage(logoClinica, 74, 42, 150, 62);
     ctx.fillStyle = "#182239"; ctx.font = "bold 40px Arial";
     ctx.fillText(texto(identidadeDocumento?.nome) || texto(clinica.nome) || texto(clinica.clinica_nome) || "Clínica veterinária", logoClinica ? 250 : 74, 105);
@@ -354,4 +372,84 @@ function OrcamentoVendaExpressa() {
       <button type="button" onClick={()=>void compartilhar()} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><Send size={18}/> Enviar ao tutor</button>
     </div>
   </main>;
+}
+
+function desenharTemaPremiumOrcamento(ctx: CanvasRenderingContext2D, id: string, largura: number, altura: number, acento: string) {
+  const alturaPagina = 1754;
+  for (let topo = 0; topo < altura; topo += alturaPagina) {
+    const margem = largura * 0.036;
+    if (id === "13") {
+      ctx.fillStyle = "#111111";
+      ctx.fillRect(0, topo, largura, alturaPagina * 0.006);
+      ctx.fillRect(0, topo + alturaPagina * 0.992, largura, alturaPagina * 0.008);
+    } else if (id === "14") {
+      ctx.strokeStyle = "#bc984f";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(margem, topo + alturaPagina * 0.013, largura - margem * 2, alturaPagina * 0.967);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(margem * 1.25, topo + alturaPagina * 0.018, largura - margem * 2.5, alturaPagina * 0.957);
+    } else if (id === "15") {
+      ctx.fillStyle = acento;
+      ctx.fillRect(0, topo, largura, alturaPagina * 0.052);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "right";
+      ctx.fillText("CUIDADO E PRECISÃO", largura - margem, topo + alturaPagina * 0.033);
+      ctx.strokeStyle = "#d8abb9";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(margem, topo + alturaPagina * 0.982);
+      ctx.lineTo(largura - margem, topo + alturaPagina * 0.982);
+      ctx.stroke();
+      ctx.strokeStyle = "#edd3d9";
+      for (let n = 0; n < 3; n++) {
+        ctx.beginPath();
+        ctx.ellipse(largura * 0.965, topo + alturaPagina * 0.175, largura * (0.06 + n * 0.03), alturaPagina * (0.022 + n * 0.01), 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (id === "16") {
+      ctx.fillStyle = acento;
+      ctx.fillRect(0, topo, largura, alturaPagina * 0.009);
+      ctx.strokeStyle = "#d6eff0";
+      ctx.lineWidth = 2;
+      for (let n = 0; n < 3; n++) {
+        ctx.beginPath();
+        ctx.ellipse(largura * 0.98, topo + alturaPagina * (0.43 + n * 0.022), largura * 0.09, alturaPagina * 0.023, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (id === "17") {
+      ctx.fillStyle = "#e9f0e7";
+      if (typeof ctx.roundRect === "function") {
+        ctx.beginPath();
+        ctx.roundRect(margem, topo + alturaPagina * 0.022, largura - margem * 2, alturaPagina * 0.084, margem * 0.25);
+        ctx.fill();
+      } else ctx.fillRect(margem, topo + alturaPagina * 0.022, largura - margem * 2, alturaPagina * 0.084);
+      ctx.strokeStyle = "#90ac93";
+      ctx.lineWidth = 2;
+      const bx = largura * 0.90, by = topo + alturaPagina * 0.91;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + largura * 0.027, by - alturaPagina * 0.105);
+      ctx.stroke();
+      for (let n = 0; n < 5; n++) {
+        const y = by - alturaPagina * (0.02 + n * 0.019);
+        const x = bx + largura * (0.005 + n * 0.004);
+        ctx.beginPath();
+        ctx.ellipse(x + (n % 2 ? 5 : -5), y, 15, 7, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (id === "18") {
+      ctx.fillStyle = acento;
+      ctx.fillRect(0, topo, largura, alturaPagina * 0.01);
+      ctx.fillRect(0, topo + alturaPagina * 0.989, largura, alturaPagina * 0.011);
+      ctx.strokeStyle = "#edcdbf";
+      ctx.lineWidth = 2;
+      for (let n = 0; n < 3; n++) {
+        ctx.beginPath();
+        ctx.ellipse(largura * 0.98, topo + alturaPagina * 0.22, largura * (0.11 + n * 0.03), alturaPagina * (0.042 + n * 0.02), 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.textAlign = "left";
 }
