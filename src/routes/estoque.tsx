@@ -16,6 +16,7 @@ import {
 } from "@/lib/comissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { usePermissoes } from "@/hooks/usePermissoes";
+import { encontrarServicoConsulta, SERVICO_CONSULTA_PADRAO } from "@/lib/consulta-catalogo";
 import { agruparFaixasPorCondicao, faixasValidas, tituloFaixa, validarFaixasPeso, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
 
 export const Route = createFileRoute("/estoque")({ component: AreaEstoque });
@@ -29,6 +30,7 @@ function AreaEstoque() {
 type Aba = "catalogo" | "cadastro" | "estoque" | "historico" | "comissoes" | "equipe" | "pagamentos";
 type ItemForm = {
   id?: string;
+  consultaPadrao?: boolean;
   tipo: "servico" | "produto";
   nome: string;
   categoria: string;
@@ -141,6 +143,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     () => itens.filter((item) => item.tipo === "servico" && item.ativo),
     [itens],
   );
+  const consultaCadastrada = encontrarServicoConsulta(servicos);
   const produtos = useMemo(
     () => itens.filter((item) => item.tipo === "produto" && item.ativo),
     [itens],
@@ -221,7 +224,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     // de leituras adicionais para cadastrar ou movimentar produtos.
     const {data: itensResult, error: erroItens} = await supabaseBanco
       .from("oricse_catalogo_itens").select("*")
-      .eq("clinica_id",clinica).order("nome");
+      .eq("clinica_id",clinica).order("nome").order("id");
     if (erroItens) throw erroItens;
     setItens((itensResult || []) as ItemCatalogo[]);
     if (area !== "rh") return;
@@ -294,6 +297,11 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     setModal({ ...FORM_VAZIO, tipo });
   }
 
+  function configurarConsultaPadrao() {
+    if (!podeGerenciarCatalogo || consultaCadastrada) return;
+    setModal({ ...FORM_VAZIO, ...SERVICO_CONSULTA_PADRAO, consultaPadrao: true });
+  }
+
   async function salvarItem(event: FormEvent) {
     event.preventDefault();
     if (!podeGerenciarCatalogo) return void toast.error("Seu usuário não pode gerenciar o catálogo.");
@@ -319,6 +327,9 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     const estoqueAtual = modal.tipo === "produto" && modal.estoque_atual !== "" ? Number(modal.estoque_atual.replace(",", ".")) : null;
     const estoqueMinimo = modal.tipo === "produto" && modal.estoque_minimo !== "" ? Number(modal.estoque_minimo.replace(",", ".")) : null;
     if (!nome) return void toast.error("Informe o nome.");
+    if (modal.consultaPadrao && !modal.preco_por_peso && !modal.valor.trim()) {
+      return void toast.error("Informe o preço da consulta.");
+    }
     if (!Number.isFinite(valor) || valor < 0) return void toast.error("Informe um preço válido.");
     if ([estoqueAtual, estoqueMinimo].some((quantidade) => quantidade !== null && (!Number.isFinite(quantidade) || quantidade < 0))) {
       return void toast.error("Informe quantidades de estoque válidas.");
@@ -595,7 +606,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       {aba === "catalogo" && podeVerCatalogo && (
         <div className="space-y-3">
           <div className="grid gap-4 md:grid-cols-2">
-          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("servico") : undefined} aoEditar={(item) => setModal({
+          <CatalogoGrupo titulo="Serviços" descricao="Sem controle de estoque." icone="servico" itens={servicos} consultaPadraoId={consultaCadastrada?.id} mostrarConsultaPadrao={!carregando && !consultaCadastrada} aoConfigurarConsulta={podeGerenciarCatalogo ? configurarConsultaPadrao : undefined} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("servico") : undefined} aoEditar={(item) => setModal({
             id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria,
             valor: formatarValorExistente(item.valor), estoque_atual: "", estoque_minimo: "",
             codigo_barras: "", venda_por_peso: false,
@@ -609,7 +620,6 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
           })} aoRemover={arquivarItem} />
           <CatalogoGrupo titulo="Produtos" descricao="Com preço e estoque atual." icone="produto" itens={produtos} podeEditar={podeGerenciarCatalogo} aoAdicionar={podeGerenciarCatalogo ? () => iniciarCadastro("produto") : undefined} aoEditar={(item) => setModal({ id: item.id, tipo: item.tipo, nome: item.nome, categoria: item.categoria, valor: formatarValorExistente(item.valor), estoque_atual: item.estoque_atual == null ? "" : String(item.estoque_atual), estoque_minimo: item.estoque_minimo == null ? "" : String(item.estoque_minimo), codigo_barras: item.codigo_barras || "", venda_por_peso: Boolean(item.venda_por_peso),
             preco_por_peso: false, faixas_peso: [] })} aoRemover={arquivarItem} />
-          {!servicos.length && !produtos.length && <div className="col-span-full rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">O catálogo está vazio.</div>}
           </div>
         </div>
       )}
@@ -849,7 +859,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
               <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs font-semibold sm:col-span-2">Nome
-                <input autoFocus maxLength={120} required value={modal.nome} onChange={(event) => setModal({ ...modal, nome: event.target.value })} placeholder={modal.tipo === "servico" ? "Ex.: Consulta" : "Ex.: Vacina V10"} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal" />
+                <input autoFocus={!modal.consultaPadrao} readOnly={modal.consultaPadrao} maxLength={120} required value={modal.nome} onChange={(event) => setModal({ ...modal, nome: event.target.value })} placeholder={modal.tipo === "servico" ? "Ex.: Consulta" : "Ex.: Vacina V10"} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal" />
               </label>
               <label className="text-xs font-semibold">Categoria
                 <select value={modal.categoria} onChange={(event) => setModal({ ...modal, categoria: event.target.value })} className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal">
@@ -858,7 +868,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
                 </select>
               </label>
               {!modal.preco_por_peso && <label className="text-xs font-semibold">Preço
-                <input required type="text" inputMode="numeric" value={modal.valor} onChange={(event) => setModal({ ...modal, valor: formatarCentavos(event.target.value) })} onFocus={(event) => event.currentTarget.select()} placeholder="R$ 0,00" aria-label="Preço em reais, digitado em centavos" className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal tabular-nums" />
+                <input autoFocus={modal.consultaPadrao} required type="text" inputMode="numeric" value={modal.valor} onChange={(event) => setModal({ ...modal, valor: modal.consultaPadrao && !/\d/.test(event.target.value) ? "" : formatarCentavos(event.target.value) })} onFocus={(event) => event.currentTarget.select()} placeholder="R$ 0,00" aria-label="Preço em reais, digitado em centavos" className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm font-normal tabular-nums" />
               </label>}
               {modal.tipo === "servico" && <div className="sm:col-span-2 rounded-xl border bg-secondary/10 p-3">
                 <label className="flex min-h-11 items-center gap-3 text-sm font-bold">
@@ -976,11 +986,14 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
   );
 }
 
-function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdicionar, aoEditar, aoRemover }: {
+function CatalogoGrupo({ titulo, descricao, icone, itens, consultaPadraoId, mostrarConsultaPadrao, aoConfigurarConsulta, podeEditar, aoAdicionar, aoEditar, aoRemover }: {
   titulo: string;
   descricao: string;
   icone: "servico" | "produto";
   itens: ItemCatalogo[];
+  consultaPadraoId?: string;
+  mostrarConsultaPadrao?: boolean;
+  aoConfigurarConsulta?: () => void;
   podeEditar: boolean;
   aoAdicionar?: () => void;
   aoEditar: (item: ItemCatalogo) => void;
@@ -1003,10 +1016,23 @@ function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdiciona
         </button>
       )}
       <div className="space-y-2">
+        {mostrarConsultaPadrao && (
+          <article className="flex min-h-[58px] flex-wrap items-center gap-2 rounded-lg border border-dashed px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{SERVICO_CONSULTA_PADRAO.nome}</p>
+              <p className="text-[11px] text-muted-foreground">Serviço padrão da comanda · preço a definir</p>
+            </div>
+            {aoConfigurarConsulta && <button type="button" onClick={aoConfigurarConsulta}
+              className="min-h-9 rounded-lg border px-3 text-xs font-semibold text-primary hover:bg-muted">
+              Definir preço da consulta
+            </button>}
+          </article>
+        )}
         {itens.length ? itens.map((item) => (
           <article key={item.id} className="flex min-h-[58px] items-center gap-2 rounded-lg border px-3 py-2">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{item.nome}</p>
+              {item.id === consultaPadraoId && <p className="text-[11px] font-semibold text-primary">Preço automático da comanda</p>}
               <p className="truncate text-[11px] text-muted-foreground">{item.categoria || (item.tipo === "produto" ? `Estoque: ${item.estoque_atual ?? "—"}` : "Serviço")}{item.tipo === "produto" && item.categoria ? ` · Estoque: ${item.estoque_atual ?? "—"}` : ""}
                 {item.tipo === "servico" && faixasValidas(item.faixas_peso).length > 0 &&
                   <span className="ml-1 text-primary"> · Preço por paciente: {agruparFaixasPorCondicao(item.faixas_peso).length} {agruparFaixasPorCondicao(item.faixas_peso).length === 1 ? "grupo" : "grupos"}</span>}</p>
@@ -1035,7 +1061,7 @@ function CatalogoGrupo({ titulo, descricao, icone, itens, podeEditar, aoAdiciona
               <button type="button" onClick={() => aoRemover(item)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label={`Remover ${item.nome}`}><Trash2 size={14} /></button>
             </div>}
           </article>
-        )) : <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">Nenhum {icone === "servico" ? "serviço" : "produto"} cadastrado.</div>}
+        )) : !mostrarConsultaPadrao && <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">Nenhum {icone === "servico" ? "serviço" : "produto"} cadastrado.</div>}
       </div>
     </section>
   );
