@@ -99,3 +99,10 @@ test("a ativação temporária fornece só um diagnóstico; não autentica downl
   assert.equal(r.headers.get("Cache-Control"), "private, no-store");
   assert.equal(consultou, 1);
 });
+
+test("a autorização não depende de relacionamento entre tabelas no PostgREST", () => {
+  const fonte = read("../src/lib/manual-sistema.server.ts");
+  assert.doesNotMatch(fonte, /clinicas!inner/);
+  assert.match(fonte, /from\("clinica_usuarios"\)[\s\S]+?eq\("ativo", true\)/);
+  assert.match(fonte, /from\("clinicas"\)[\s\S]+?in\("id", ids\)[\s\S]+?eq\("status", "ativa"\)/);
+});

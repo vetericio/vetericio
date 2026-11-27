@@ -102,17 +102,25 @@ async function autorizar(jwt: string): Promise<Acesso | null> {
   const [vinculo, perfil] = await Promise.all([
     supabaseAdmin
       .from("clinica_usuarios")
-      .select("clinica_id, clinicas!inner(id)")
+      .select("clinica_id")
       .eq("user_id", data.user.id)
-      .eq("ativo", true)
-      .eq("clinicas.status", "ativa")
-      .is("clinicas.excluido_em", null)
-      .limit(1),
+      .eq("ativo", true),
     supabaseAdmin.from("app_users").select("role").eq("user_id", data.user.id).maybeSingle(),
   ]);
   if (vinculo.error || perfil.error) throw new Error("Não foi possível validar o acesso.");
   const admin = perfil.data?.role === "admin";
-  return { admin, podeBaixar: Boolean(vinculo.data?.length) };
+  const ids = [...new Set((vinculo.data || []).map(({ clinica_id }) => clinica_id))];
+  if (!ids.length) return { admin, podeBaixar: false };
+  // Em produção o vínculo não possui relacionamento declarado no PostgREST.
+  const { data: ativas, error: erroClinica } = await supabaseAdmin
+    .from("clinicas")
+    .select("id")
+    .in("id", ids)
+    .eq("status", "ativa")
+    .is("excluido_em", null)
+    .limit(1);
+  if (erroClinica) throw new Error("Não foi possível validar a clínica.");
+  return { admin, podeBaixar: Boolean(ativas?.length) };
 }
 
 const arquivoApi = `https://www.googleapis.com/drive/v3/files/${driveId}`;
