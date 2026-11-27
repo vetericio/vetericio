@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { CODIGOS_FINANCEIROS, periodoValido } from "./relatorios";
+import { CODIGOS_RELATORIOS, periodoValido } from "./relatorios";
 
 export const consultarRelatorio = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
@@ -8,7 +8,7 @@ export const consultarRelatorio = createServerFn({ method: "POST" })
       .object({
         accessToken: z.string().min(20),
         clinicaId: z.string().uuid(),
-        codigo: z.enum(CODIGOS_FINANCEIROS),
+        codigo: z.enum(CODIGOS_RELATORIOS),
         inicio: z.string(),
         fim: z.string(),
       })

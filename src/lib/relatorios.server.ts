@@ -9,6 +9,7 @@ import {
   gruposMonetarios,
   moeda,
   PERMISSAO_RELATORIOS,
+  permissaoDoRelatorio,
   resumirCaixa,
   situacaoRecebivel,
   soma,
@@ -142,11 +143,34 @@ export async function gerarRelatorio({
     supabaseAdmin,
     auth.user.id,
     clinicaId,
-    [PERMISSAO_RELATORIOS],
+    [permissaoDoRelatorio(codigo)],
     accessToken,
   );
 
   await exigirClinicaNoPilotoRelatorios(supabaseAdmin, clinicaId, auth.user.id);
+
+  if (codigo === "08" || codigo === "09" || codigo === "10") {
+    const { gerarRelatorioAgenda } = await import("./relatorios-agenda.server");
+    return gerarRelatorioAgenda({ accessToken, clinicaId, codigo, inicio, fim });
+  }
+
+  if (codigo === "11" || codigo === "12") {
+    let podeVerFinanceiro = false;
+    try {
+      await exigirPermissaoClinica(
+        supabaseAdmin,
+        auth.user.id,
+        clinicaId,
+        [PERMISSAO_RELATORIOS],
+        accessToken,
+      );
+      podeVerFinanceiro = true;
+    } catch {
+      // A operação continua disponível, mas a leitura financeira falha fechada.
+    }
+    const { gerarRelatorioPet } = await import("./relatorios-pet.server");
+    return gerarRelatorioPet({ accessToken, clinicaId, codigo, inicio, fim, podeVerFinanceiro });
+  }
 
   const banco = clienteSupabaseUsuario(accessToken);
   const margemInicio = somarDias(inicio, -1) + "T00:00:00Z";

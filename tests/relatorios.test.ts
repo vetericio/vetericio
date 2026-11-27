@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CODIGOS_FINANCEIROS,
+  CODIGOS_RELATORIOS,
+  permissaoDoRelatorio,
   competencia,
   fluxoRegistrado,
   gruposMonetarios,
@@ -33,9 +35,13 @@ const movimento = (
   ...campos,
 });
 
-test("catálogo conserva 30 entradas e entrega 01 a 07, na ordem", () => {
+test("catálogo conserva 30 entradas e entrega 01 a 12, na ordem", () => {
   assert.equal(RELATORIOS.length, 30);
   assert.deepEqual(CODIGOS_FINANCEIROS, ["01", "02", "03", "04", "05", "06", "07"]);
+  assert.deepEqual(CODIGOS_RELATORIOS.slice(7), ["08", "09", "10", "11", "12"]);
+  assert.equal(permissaoDoRelatorio("07"), "caixa.financeiro.visualizar");
+  assert.equal(permissaoDoRelatorio("08"), "recepcao.agenda");
+  assert.equal(permissaoDoRelatorio("12"), "hotelzinho.visualizar");
 });
 
 test("período admite só dias reais e no máximo 93 dias", () => {

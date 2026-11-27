@@ -1,6 +1,29 @@
 export const CODIGOS_FINANCEIROS = ["01", "02", "03", "04", "05", "06", "07"] as const;
-export type CodigoRelatorio = (typeof CODIGOS_FINANCEIROS)[number];
+export const CODIGOS_AGENDA = ["08", "09", "10"] as const;
+export const CODIGOS_PET = ["11", "12"] as const;
+export const CODIGOS_OPERACIONAIS = [...CODIGOS_AGENDA, ...CODIGOS_PET] as const;
+export const CODIGOS_RELATORIOS = [...CODIGOS_FINANCEIROS, ...CODIGOS_OPERACIONAIS] as const;
+export type CodigoRelatorio = (typeof CODIGOS_RELATORIOS)[number];
 export const PERMISSAO_RELATORIOS = "caixa.financeiro.visualizar";
+export const PERMISSOES_ROTA_RELATORIOS = [
+  PERMISSAO_RELATORIOS,
+  "recepcao.agenda",
+  "hotelzinho.visualizar",
+] as const;
+
+export function permissaoDoRelatorio(codigo: CodigoRelatorio) {
+  switch (codigo) {
+    case "08":
+    case "09":
+    case "10":
+      return "recepcao.agenda";
+    case "11":
+    case "12":
+      return "hotelzinho.visualizar";
+    default:
+      return PERMISSAO_RELATORIOS;
+  }
+}
 
 export const RELATORIOS = [
   "Faturamento",
@@ -10,11 +33,11 @@ export const RELATORIOS = [
   "Contas a pagar e fluxo de caixa",
   "Conciliação, taxas, estornos e repasses",
   "Orçamentos, comandas e conversão",
-  "Ocupação e capacidade de agendas",
+  "Ocupação e capacidade por agenda e profissional",
   "Faltas, cancelamentos e reagendamentos",
-  "Fila e tempo de espera",
-  "Banho e tosa",
-  "Hotelzinho",
+  "Fila, tempo de espera e conversão em atendimento",
+  "Banho e tosa: produção, receita e cancelamentos",
+  "Hotelzinho: ocupação, diárias, extras e pagamentos",
   "Produtividade, escalas e comissões",
   "Ponto, jornada e banco de horas",
   "Consultas, procedimentos e retornos",

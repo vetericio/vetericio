@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import ts from "typescript";
+import { CODIGOS_RELATORIOS } from "../src/lib/relatorios.ts";
 
 const urlLib = new URL("../src/lib/relatorios.ts", import.meta.url).href;
 const urlPiloto = new URL("../src/lib/relatorios-acesso.ts", import.meta.url).href;
@@ -10,7 +11,15 @@ const { outputText } = ts.transpileModule(codigo, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 });
 const chave = Symbol.for("oricse.tests.relatorios.deps");
+const stub = (fn) =>
+  JSON.stringify(
+    `data:text/javascript;base64,${Buffer.from(
+      `export const ${fn} = (input) => globalThis[Symbol.for("oricse.tests.relatorios.deps")].${fn}(input);`,
+    ).toString("base64")}`,
+  );
 const programa = outputText
+  .replace('"./relatorios-agenda.server"', stub("gerarRelatorioAgenda"))
+  .replace('"./relatorios-pet.server"', stub("gerarRelatorioPet"))
   .replace('import { supabaseAdmin } from "@/integrations/supabase/client.server";', "")
   .replace(
     'import { clienteSupabaseUsuario, exigirPermissaoClinica } from "@/lib/permissao-clinica.server";',
@@ -39,7 +48,15 @@ test("relatórios não iniciam consulta sem autenticação, vínculo e permissã
   let autenticado = false;
   let falhaClinica = false;
   let vinculoAtivo = true;
+  const chamadasOperacionais = [];
+  const permissoesConcedidas = new Set(["caixa.financeiro.visualizar"]);
+  const operativo = (entrada) => {
+    chamadasOperacionais.push(entrada);
+    return { indicadores: [], notas: [], tabelas: [] };
+  };
   globalThis[chave] = {
+    gerarRelatorioAgenda: operativo,
+    gerarRelatorioPet: operativo,
     supabaseAdmin: {
       from(tabela) {
         const filtros = [];
@@ -76,7 +93,7 @@ test("relatórios não iniciam consulta sem autenticação, vínculo e permissã
     async exigirPermissaoClinica(_admin, usuario, clinica, permissoes, jwt) {
       assert.equal(usuario, "vet-a");
       assert.equal(jwt, params.accessToken);
-      if (!autorizado || permissoes[0] !== "caixa.financeiro.visualizar") {
+      if (!autorizado || !permissoesConcedidas.has(permissoes[0])) {
         throw new Error("Seu cargo ou plano não autoriza esta operação.");
       }
     },
@@ -125,8 +142,12 @@ test("relatórios não iniciam consulta sem autenticação, vínculo e permissã
     await assert.rejects(gerarRelatorio(params), /não autoriza/);
     autorizado = true;
 
-    // A outra clínica tem permissão financeira. Ainda assim, o piloto é bloqueado.
-    for (const codigo of ["01", "02", "03", "04", "05", "06", "07"]) {
+    await assert.rejects(gerarRelatorio({ ...params, codigo: "08" }), /não autoriza/);
+    await assert.rejects(gerarRelatorio({ ...params, codigo: "11" }), /não autoriza/);
+    permissoesConcedidas.add("recepcao.agenda");
+    permissoesConcedidas.add("hotelzinho.visualizar");
+    // Mesmo com as permissões de origem, a outra clínica não entra no piloto.
+    for (const codigo of CODIGOS_RELATORIOS) {
       await assert.rejects(
         gerarRelatorio({ ...params, codigo, clinicaId: "clinica-b" }),
         /somente para a Veterício/,
@@ -143,6 +164,21 @@ test("relatórios não iniciam consulta sem autenticação, vínculo e permissã
     const relat = await gerarRelatorio(params);
     assert.equal(relat.indicadores[1].valor, 1);
     assert.equal(relat.tabelas[0].linhas[0][0], "Consultas");
+    assert.equal(consultas, 1);
+    assert.equal(chamadasOperacionais.length, 0);
+
+    permissoesConcedidas.delete("caixa.financeiro.visualizar");
+    for (const codigo of ["08", "09", "10", "11", "12"]) {
+      await gerarRelatorio({ ...params, codigo });
+      assert.equal(chamadasOperacionais.at(-1).codigo, codigo);
+      assert.equal(chamadasOperacionais.at(-1).clinicaId, "clinica-a");
+    }
+    assert.equal("podeVerFinanceiro" in chamadasOperacionais[0], false);
+    assert.equal(chamadasOperacionais.at(-1).podeVerFinanceiro, false);
+
+    permissoesConcedidas.add("caixa.financeiro.visualizar");
+    await gerarRelatorio({ ...params, codigo: "12" });
+    assert.equal(chamadasOperacionais.at(-1).podeVerFinanceiro, true);
     assert.equal(consultas, 1);
   } finally {
     delete globalThis[chave];
