@@ -39,6 +39,8 @@ function OrcamentoVendaExpressa() {
   const [validade, setValidade] = useState("7");
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const [catalogoClinicaId, setCatalogoClinicaId] = useState("");
+  const catalogoPronto = !!clinicaId && catalogoClinicaId === clinicaId && !carregando;
   const itens = useMemo(() => linhas.map(linha => {
     const produto = produtos.find(p => p.id === linha.produtoId);
     const preco = produto?.faixas.length ? calcularPrecoOrcamento(produto.faixas, linha.perfil) : null;
@@ -51,7 +53,7 @@ function OrcamentoVendaExpressa() {
   const totalCentavos = itens.reduce((soma, item) => soma + (item.subtotalCentavos ?? 0), 0);
   const total = totalCentavos / 100;
   const temPrecoPendente = itens.some(({ preco }) => preco && preco.valor === null);
-  const orcamentoCompleto = itens.length > 0 && itens.every(item => item.subtotalCentavos !== null);
+  const orcamentoCompleto = catalogoPronto && itens.length > 0 && itens.every(item => item.subtotalCentavos !== null);
 
   const [registrando, setRegistrando] = useState(false);
   const [registro, setRegistro] = useState<{chave:string;id:string}>();
@@ -87,6 +89,17 @@ function OrcamentoVendaExpressa() {
   }
 
   useEffect(() => {
+    // Um orçamento em edição pertence à clínica que forneceu seus dados.
+    setCatalogoClinicaId("");
+    setClinica({});
+    setProdutos([]);
+    setTutores([]);
+    setLinhas([]);
+    setNomeTutor("");
+    setContatoTutor("");
+    setObservacoes("");
+    setRegistro(undefined);
+    tentativa.current = undefined;
     if (!clinicaId || !autorizado) return;
     let ativo = true;
     setCarregando(true);
@@ -105,6 +118,7 @@ function OrcamentoVendaExpressa() {
         faixas: item.tipo === "servico" ? faixasValidas(item.faixas_peso) : [],
       })));
       setTutores(t.error ? [] : t.data || []);
+      setCatalogoClinicaId(clinicaId);
     }).catch(e => { if (ativo) toast.error(e instanceof Error ? e.message : "Não foi possível carregar os dados."); })
       .finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
@@ -232,7 +246,7 @@ function OrcamentoVendaExpressa() {
       <div className="self-end text-sm text-muted-foreground">Clínica: {texto(clinica.nome) || "Carregando dados…"}</div>
     </section>
     <section className="space-y-3 rounded-2xl border bg-card p-5">
-      <div className="flex items-center justify-between"><h2 className="font-bold">Produtos e serviços</h2><button type="button" onClick={adicionar} disabled={carregando || !produtos.length} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={17}/> Adicionar item</button></div>
+      <div className="flex items-center justify-between"><h2 className="font-bold">Produtos e serviços</h2><button type="button" onClick={adicionar} disabled={!catalogoPronto || !produtos.length} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={17}/> Adicionar item</button></div>
       {itens.map(({ linha, preco, subtotalCentavos }) => <div key={linha.id} className="grid items-center gap-2 sm:grid-cols-[1fr_110px_125px_42px]">
         <select aria-label="Produto ou serviço" className="min-w-0 rounded-lg border bg-background p-2.5" value={linha.produtoId}
           onChange={e => atualizarLinha(linha.id, { produtoId: e.target.value })}>
