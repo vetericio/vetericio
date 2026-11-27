@@ -1,8 +1,10 @@
+import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
 import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
+import { idAnimalDaFicha, mostrarEnderecoDaFichaNoHost, slugEnderecoFichaAnimal } from "@/lib/endereco-ficha-animal";
 import { urlPortalDoTutor } from "@/lib/portal-tutor-url";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
-import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowRight,
@@ -52,7 +54,7 @@ import { calcularDataRetorno, formatarDataRetorno, OPCOES_DIAS_RETORNO } from "@
 
 import { ehRegistroConsulta, resumirConsulta } from "@/lib/resumo-consulta";
 
-export const Route = createFileRoute("/animal")({ component: AnimalFicha });
+export const Route = createFileRoute("/animal")({ component: FichaAnimalLegada });
 
 type Tutor = {
   id: string;
@@ -302,8 +304,75 @@ function registroPreventivo(linha: VacinaPortal | VermifugoPortal): Registro {
   };
 }
 
-function AnimalFicha() {
+function FichaAnimalLegada() {
+  const busca = useSearch({ strict: false }) as { animalId?: unknown };
+  return <AnimalFicha key={typeof busca.animalId === "string" ? busca.animalId : ""} atualizarEndereco />;
+}
+
+async function slugDaClinicaDaFicha(clinicaId: string, signal?: AbortSignal) {
+  const consulta = supabaseBanco.from("clinicas").select("slug").eq("id", clinicaId);
+  const { data, error } = await (signal ? consulta.abortSignal(signal) : consulta).maybeSingle();
+  return error ? null : slugEnderecoFichaAnimal(data?.slug);
+}
+
+// A URL organiza a navegação; a autorização continua no banco. Nunca monta
+// a ficha nem muda a clínica ativa enquanto o endereço não corresponder à clínica do animal.
+export function FichaAnimalPorClinica({ slugClinica }: { slugClinica: string }) {
+  const busca = useSearch({ strict: false }) as { animalId?: unknown };
+  const animalId = idAnimalDaFicha(busca.animalId);
+  const { carregando, clinicaId: clinicaAtiva, podeAlguma } = usePermissoes();
+  const podeAbrirFicha = !carregando && Boolean(clinicaAtiva) && podeAlguma(permissoesDaRota("/animal") || []);
+  const [resultado, setResultado] = useState<{ animalId: string; clinicaId: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!animalId || !podeAbrirFicha) return;
+    let ativo = true;
+    void (async () => {
+      try {
+        const [resolucao, contexto] = await Promise.all([
+          (supabaseBanco as any).rpc("oricse_resolver_clinica_cadastro_animal", { p_animal: animalId }),
+          supabaseBanco.rpc("oricse_contexto_clinica_atual"),
+        ]);
+        const id = resolucao.data;
+        if (resolucao.error || !id || contexto.error || contexto.data?.[0]?.clinica_id !== id ||
+          id !== clinicaAtiva || await slugDaClinicaDaFicha(id) !== slugClinica) {
+          if (ativo) setResultado({ animalId, clinicaId: null });
+          return;
+        }
+        if (ativo) setResultado({ animalId, clinicaId: id });
+      } catch {
+        if (ativo) setResultado({ animalId, clinicaId: null });
+      }
+    })();
+    return () => { ativo = false; };
+  }, [animalId, clinicaAtiva, podeAbrirFicha, slugClinica]);
+
+  if (!carregando && (!podeAbrirFicha || !animalId || (resultado?.animalId === animalId && !resultado.clinicaId))) {
+    return (
+      <main className="mx-auto max-w-lg p-8 text-center">
+        <h1 className="text-xl font-black">Ficha não encontrada neste endereço</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Confira o link ou abra a ficha pela lista de animais.</p>
+        <Link to="/animais" className="mt-4 inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
+          Voltar à lista de animais
+        </Link>
+      </main>
+    );
+  }
+  if (carregando || !resultado || resultado.animalId !== animalId || resultado.clinicaId !== clinicaAtiva) {
+    return <p className="p-6 text-sm text-muted-foreground" role="status">Carregando ficha…</p>;
+  }
+  return <AnimalFicha key={animalId} clinicaConfirmada={resultado.clinicaId} />;
+}
+
+function AnimalFicha({
+  atualizarEndereco = false,
+  clinicaConfirmada,
+}: {
+  atualizarEndereco?: boolean;
+  clinicaConfirmada?: string;
+}) {
   const demoAlvorada = useDemoAlvorada();
+  const navigate = useNavigate();
   const busca = useSearch({ strict: false }) as { animalId?: unknown; comandaId?: unknown };
   const animalId = typeof busca.animalId === "string" ? busca.animalId : "";
   const [animal, setAnimal] = useState<Animal | null>(null);
@@ -318,17 +387,37 @@ function AnimalFicha() {
           throw Error(
             "Identificação do animal ausente no link. Abra a ficha a partir da fila ou da lista de animais.",
           );
-        const { data: cid, error: eCid } = await (supabaseBanco as any).rpc(
-          "oricse_resolver_clinica_cadastro_animal",
-          { p_animal: animalId },
-        );
-        if (eCid || !cid) throw Error(eCid?.message || "Clínica do animal não identificada.");
-        // Ao abrir pelo Admin, alinha o contexto da sessão à clínica do paciente.
-        const { error: eAtiva } = await (supabaseBanco as any).rpc(
-          "oricse_clinica_ativa_definir",
-          { p_clinica: cid },
-        );
-        if (eAtiva) throw eAtiva;
+        let cid = clinicaConfirmada;
+        if (!cid) {
+          const { data, error } = await (supabaseBanco as any).rpc(
+            "oricse_resolver_clinica_cadastro_animal",
+            { p_animal: animalId },
+          );
+          if (!vivo) return;
+          if (error || !data) throw Error(error?.message || "Clínica do animal não identificada.");
+          cid = data;
+        }
+        if (!cid) return;
+        const podePadronizar = atualizarEndereco && idAnimalDaFicha(animalId) &&
+          mostrarEnderecoDaFichaNoHost(window.location.hostname) &&
+          !new URLSearchParams(window.location.search).has("visual_editor");
+        // Nunca usar o endereço novo para trocar a unidade ativa. Se a ficha
+        // legada precisa alinhar a clínica (fluxo existente do Admin), fica no endereço antigo.
+        let correspondeAoContexto = false;
+        if (podePadronizar) {
+          try {
+            const contexto = await supabaseBanco.rpc("oricse_contexto_clinica_atual");
+            correspondeAoContexto = !contexto.error && contexto.data?.[0]?.clinica_id === cid;
+          } catch { /* mantém a rota legada */ }
+        }
+        if (!vivo) return;
+        if (!clinicaConfirmada) {
+          const { error: eAtiva } = await (supabaseBanco as any).rpc(
+            "oricse_clinica_ativa_definir",
+            { p_clinica: cid },
+          );
+          if (eAtiva) throw eAtiva;
+        }
         const { data, error } = await (supabaseBanco as any).rpc("oricse_animal_cadastro_tela", {
           p_clinica: cid,
           p_animal: animalId,
@@ -336,10 +425,29 @@ function AnimalFicha() {
         if (error) throw error;
         if (!vivo) return;
         const a = data?.animal;
-        const t = data?.tutor;
+        // Resolve o endereço antes de mostrar a tela editável: uma resposta
+        // tardia nunca pode desmontar a ficha com trabalho aberto.
+        if (a && correspondeAoContexto) {
+          try {
+            const limite = typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(1800) : undefined;
+            const slug = await slugDaClinicaDaFicha(cid, limite);
+            if (!vivo) return;
+            if (slug) {
+              await navigate({
+                to: "/$tipo/$slug",
+                params: { tipo: slug, slug: "animal" },
+                search: true,
+                hash: true,
+                replace: true,
+              });
+              return;
+            }
+          } catch { /* fallback para a ficha legada */ }
+        }
+        if (!vivo) return;
         setErroFicha("");
         setAnimal(a ? { ...a, peso: a.peso == null ? "" : String(a.peso) } : null);
-        setTutor(t || null);
+        setTutor(data?.tutor || null);
         setClinicaId(cid);
       } catch (e) {
         if (vivo) {
@@ -354,7 +462,7 @@ function AnimalFicha() {
     return () => {
       vivo = false;
     };
-  }, [animalId]);
+  }, [animalId, atualizarEndereco, clinicaConfirmada, navigate]);
   const [aba, setAba] = useState<Aba>(() => {
     const solicitada = typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("aba") : null;
