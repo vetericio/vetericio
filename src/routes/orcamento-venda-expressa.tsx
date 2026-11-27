@@ -161,7 +161,7 @@ function OrcamentoVendaExpressa() {
           logoAlternativa: identidadeLogo.logoAlternativa || texto(logo.data?.logo_url),
         };
         const { prepararLogoDocumento } = await import("@/lib/modelos-documentos-pdf");
-        const logoPronta = await prepararLogoDocumento(identidadeComAlternativa, true);
+        const logoPronta = await prepararLogoDocumento(identidadeComAlternativa, true, true);
         if (logoPronta) {
           const imagemLogo = await new Promise<HTMLImageElement | null>(resolve => {
             const imagem = new Image();
@@ -221,7 +221,16 @@ function OrcamentoVendaExpressa() {
     }
     if (tema) desenharFundoTemaPremiumCanvas(ctx, tema.id, largura, altura);
     else if (!fundoClinica) { ctx.fillStyle = corMarca; ctx.fillRect(0, 0, largura, 16); }
-    if (logoClinica) ctx.drawImage(logoClinica, 74, 42, 150, 62);
+    if (logoClinica) {
+      const larguraOriginal = logoClinica.naturalWidth || logoClinica.width;
+      const alturaOriginal = logoClinica.naturalHeight || logoClinica.height;
+      const escalaLogo = Math.min(150 / larguraOriginal, 62 / alturaOriginal);
+      const larguraLogo = larguraOriginal * escalaLogo;
+      const alturaLogo = alturaOriginal * escalaLogo;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(logoClinica, 74 + (150 - larguraLogo) / 2, 42 + (62 - alturaLogo) / 2, larguraLogo, alturaLogo);
+    }
     ctx.fillStyle = "#182239"; ctx.font = "bold 40px Arial";
     ctx.fillText(texto(identidadeDocumento?.nome) || texto(clinica.nome) || texto(clinica.clinica_nome) || "Clínica veterinária", logoClinica ? 250 : 74, 105);
     ctx.font = "22px Arial"; ctx.fillStyle = "#4b5563";
