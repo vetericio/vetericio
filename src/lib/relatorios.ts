@@ -2,27 +2,68 @@ export const CODIGOS_FINANCEIROS = ["01", "02", "03", "04", "05", "06", "07"] as
 export const CODIGOS_AGENDA = ["08", "09", "10"] as const;
 export const CODIGOS_PET = ["11", "12"] as const;
 export const CODIGOS_OPERACIONAIS = [...CODIGOS_AGENDA, ...CODIGOS_PET] as const;
-export const CODIGOS_RELATORIOS = [...CODIGOS_FINANCEIROS, ...CODIGOS_OPERACIONAIS] as const;
+export const CODIGOS_EQUIPE = ["13", "14"] as const;
+export const CODIGOS_CLINICOS = [
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "20",
+  "21",
+  "22",
+  "23",
+  "24",
+] as const;
+export const CODIGOS_GESTAO = ["25", "26", "27", "28", "29", "30"] as const;
+export const CODIGOS_RELATORIOS = [
+  ...CODIGOS_FINANCEIROS,
+  ...CODIGOS_OPERACIONAIS,
+  ...CODIGOS_EQUIPE,
+  ...CODIGOS_CLINICOS,
+  ...CODIGOS_GESTAO,
+] as const;
 export type CodigoRelatorio = (typeof CODIGOS_RELATORIOS)[number];
 export const PERMISSAO_RELATORIOS = "caixa.financeiro.visualizar";
-export const PERMISSOES_ROTA_RELATORIOS = [
-  PERMISSAO_RELATORIOS,
-  "recepcao.agenda",
-  "hotelzinho.visualizar",
-] as const;
+export const PERMISSAO_RELATORIOS_EQUIPE = "equipe.pagamentos.visualizar";
 
-export function permissaoDoRelatorio(codigo: CodigoRelatorio) {
-  switch (codigo) {
-    case "08":
-    case "09":
-    case "10":
-      return "recepcao.agenda";
-    case "11":
-    case "12":
-      return "hotelzinho.visualizar";
-    default:
-      return PERMISSAO_RELATORIOS;
-  }
+// Cada linha é a conjunção das permissões das fontes lidas por aquele relatório.
+const requisitos: Record<CodigoRelatorio, readonly string[]> = {
+  "01": [PERMISSAO_RELATORIOS],
+  "02": [PERMISSAO_RELATORIOS],
+  "03": [PERMISSAO_RELATORIOS],
+  "04": [PERMISSAO_RELATORIOS],
+  "05": [PERMISSAO_RELATORIOS],
+  "06": [PERMISSAO_RELATORIOS],
+  "07": [PERMISSAO_RELATORIOS],
+  "08": ["recepcao.agenda"],
+  "09": ["recepcao.agenda"],
+  "10": ["recepcao.agenda"],
+  "11": ["hotelzinho.visualizar"],
+  "12": ["hotelzinho.visualizar"],
+  "13": ["consultorio.atendimentos"],
+  "14": [PERMISSAO_RELATORIOS_EQUIPE],
+  "15": ["consultorio.atendimentos"],
+  "16": ["consultorio.atendimentos"],
+  "17": ["internacao.registrar"],
+  "18": ["internacao.plantoes", "internacao.registrar"],
+  "19": ["internacao.medicacoes", "internacao.registrar", "consultorio.atendimentos"],
+  "20": ["consultorio.atendimentos"],
+  "21": ["consultorio.atendimentos"],
+  "22": ["consultorio.receituario"],
+  "23": ["estoque.catalogo.visualizar"],
+  "24": ["consultorio.atendimentos"],
+  "25": ["estoque.catalogo.visualizar"],
+  "26": ["recepcao.cadastros.visualizar", "recepcao.agenda"],
+  "27": ["crm.visualizar"],
+  "28": ["portal_tutor.gerenciar", "recepcao.cadastros.visualizar", "recepcao.agenda"],
+  "29": ["administracao.configuracoes"],
+  "30": ["administracao.permissoes"],
+};
+export const PERMISSOES_ROTA_RELATORIOS = [...new Set(Object.values(requisitos).flat())];
+
+export function permissoesDoRelatorio(codigo: CodigoRelatorio): readonly string[] {
+  return requisitos[codigo];
 }
 
 export const RELATORIOS = [
@@ -80,7 +121,32 @@ export function periodoValido(inicio: string, fim: string) {
   return valida(inicio) && valida(fim) && inicio <= fim && fim < somarDias(inicio, 93);
 }
 
-export type TabelaRelatorio = { titulo: string; colunas: string[]; linhas: (string | number)[][] };
+export type TabelaRelatorio = {
+  titulo: string;
+  colunas: string[];
+  linhas: (string | number)[][];
+  /** Índices da tabela antes de filtro/paginação; identificadores, nunca URLs de arquivo. */
+  pdfReceitas?: { linha: number; documentoId: string }[];
+};
+function textoBuscaRelatorio(valor: string | number) {
+  return String(valor)
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("pt-BR");
+}
+
+/** Preserva o índice original para que download e filtros apontem para a mesma receita. */
+export function filtrarLinhasRelatorio(tabela: TabelaRelatorio, busca: string) {
+  const termos = textoBuscaRelatorio(busca).trim().split(/\s+/).filter(Boolean);
+  return tabela.linhas
+    .map((celulas, linha) => ({ celulas, linha }))
+    .filter(({ celulas }) => {
+      if (!termos.length) return true;
+      const texto = celulas.map(textoBuscaRelatorio).join(" ");
+      return termos.every((termo) => texto.includes(termo));
+    });
+}
+
 export type DadosRelatorio = {
   indicadores: { rotulo: string; valor: string | number }[];
   notas: string[];

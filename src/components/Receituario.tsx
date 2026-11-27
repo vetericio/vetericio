@@ -381,6 +381,7 @@ export function Receituario({
             registro: {
               id: crypto.randomUUID(), clinica_id: vinculo.clinicaId, animal_id: vinculo.animalId,
               tutor_id: vinculo.tutorId, tipo: tipoReceita, numero: numero || null, titulo,
+              prescritor_nome: profissional.nomeCompleto, prescritor_crmv: `CRMV-${profissional.crmvUf} ${profissional.crmv}`,
               emitida_em: hojeNoBrasil(), resumo: itens.map(item => item.medicamento.trim()).filter(Boolean).join(", ") || null,
               visivel_tutor: enviarPortal, motivo_ocultacao: enviarPortal ? null : motivoOcultacao,
               motivo_outro: !enviarPortal && motivoOcultacao === "outro" ? motivoOutro.trim() : null,
