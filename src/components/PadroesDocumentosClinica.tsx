@@ -48,6 +48,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   const [tipo, setTipo] = useState<TipoModeloDocumento>("receita");
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [logoDocumentoPreview, setLogoDocumentoPreview] = useState("");
   const [dadosEditados, setDadosEditados] = useState<Partial<Omit<NonNullable<typeof dados>["identidade"], "logoUrl" | "logoAlternativa">>>({});
 
   useEffect(() => {
@@ -61,6 +62,22 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
       .catch((e: Error) => { if (ativo) setErro(e.message); });
     return () => { ativo = false; };
   }, [clinicaId]);
+
+  useEffect(() => {
+    let ativo = true;
+    const modeloSelecionado = dados?.modelos[tipo];
+    if (!dados || !modeloSelecionado?.usarLogo) {
+      setLogoDocumentoPreview("");
+      return () => { ativo = false; };
+    }
+    void import("@/lib/modelos-documentos-pdf")
+      .then(({ prepararLogoDocumento }) => prepararLogoDocumento(
+        dados.identidade, true, Boolean(obterTemaDocumentoPremium(modeloSelecionado.fundo)),
+      ))
+      .then(logo => { if (ativo) setLogoDocumentoPreview(logo); })
+      .catch(() => { if (ativo) setLogoDocumentoPreview(""); });
+    return () => { ativo = false; };
+  }, [dados?.identidade.logoUrl, dados?.identidade.logoAlternativa, dados?.modelos[tipo]?.usarLogo, dados?.modelos[tipo]?.fundo, tipo]);
 
   if (!dados) return <p className="rounded-xl border bg-card p-4 text-sm" role={erro ? "alert" : "status"}>
     {erro || "Carregando modelos e dados da clínica…"}
@@ -156,7 +173,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
             {[["", "Sem fundo"], ...FUNDOS_DOCUMENTOS].map(([id, nome]) => {
               const tema = obterTemaDocumentoPremium(id);
               const centralizado = id === "14";
-              const logoMiniatura = identidade.logoUrl || identidade.logoAlternativa;
+              const logoMiniatura = logoDocumentoPreview;
               return (
                 <button type="button" key={id} aria-pressed={modelo.fundo === id}
                   onClick={() => atualizar({ fundo: id, ...(tema ? { corQuadros: tema.acento } : {}) })}
@@ -232,19 +249,22 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
           toast.success("Padrão salvo para " + categoria.titulo.toLocaleLowerCase("pt-BR") + ".");
         })}><Save size={16} /> {ocupado ? "Processando…" : "Salvar padrão deste tipo"}</button>
       </fieldset>
-    {tipo === "orcamento" ? <PreviaOrcamento identidade={identidade} modelo={modelo} />
+    {tipo === "orcamento" ? <PreviaOrcamento identidade={identidade} modelo={modelo} logo={logoDocumentoPreview} />
       : <PreviaDocumento identidade={identidade} modelo={modelo} tipo={tipo} corpo={corpo} />}
   </section>;
 }
 
-function PreviaOrcamento({ identidade, modelo }: { identidade: IdentidadeDocumento; modelo: ModeloDocumentoPadrao }) {
+function PreviaOrcamento({ identidade, modelo, logo }: { identidade: IdentidadeDocumento; modelo: ModeloDocumentoPadrao; logo: string }) {
   const tema = obterTemaDocumentoPremium(modelo.fundo);
+  const fundoUrl = tema ? "" : urlFundoDocumento(modelo.fundo, true);
   const acento = tema?.acento || "#692b40";
   const quadro = tema?.quadro || modelo.corQuadros;
-  const logo = modelo.usarLogo ? identidade.logoUrl || identidade.logoAlternativa : "";
   return <section className="border-t pt-4" aria-label="Prévia do orçamento">
     <h3 className="mb-3 text-sm font-semibold">Prévia do orçamento</h3>
-    <div className="mx-auto aspect-[210/297] w-full max-w-lg overflow-hidden rounded-lg border bg-white p-[6%] shadow-sm" style={{ backgroundColor: tema?.papel || "#ffffff", color: tema?.texto || "#222222" }}>
+    <div className="mx-auto aspect-[210/297] w-full max-w-lg overflow-hidden rounded-lg border bg-white p-[6%] shadow-sm" style={{
+      backgroundColor: tema?.papel || "#ffffff", color: tema?.texto || "#222222",
+      ...(fundoUrl ? { backgroundImage: `url("${fundoUrl}")`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : {}),
+    }}>
       <div className="h-1.5 w-full" style={{ backgroundColor: acento }} />
       <header className="flex items-center gap-3 border-b py-4">
         {logo && <img src={logo} alt="Logo da clínica" className="h-12 max-w-20 object-contain" />}
