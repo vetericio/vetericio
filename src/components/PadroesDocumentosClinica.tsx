@@ -72,7 +72,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
     }
     void import("@/lib/modelos-documentos-pdf")
       .then(({ prepararLogoDocumento }) => prepararLogoDocumento(
-        dados.identidade, true, tipo !== "orcamento" && Boolean(obterTemaDocumentoPremium(modeloSelecionado.fundo)),
+        dados.identidade, true, tipo === "orcamento" || Boolean(obterTemaDocumentoPremium(modeloSelecionado.fundo)),
       ))
       .then(logo => { if (ativo) setLogoDocumentoPreview(logo); })
       .catch(() => { if (ativo) setLogoDocumentoPreview(""); });
