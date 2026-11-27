@@ -12,6 +12,7 @@ import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { Receituario } from "@/components/Receituario";
 import { AprovarPrecoPorPeso } from "@/components/AprovarPrecoPorPeso";
 import { faixasValidas, type AprovacaoPrecoPeso } from "@/lib/preco-por-peso";
+import { encontrarServicoConsulta, sugerirValorDaConsulta, valorFixoDoCatalogo } from "@/lib/consulta-catalogo";
 import { Medicacoes } from "@/components/Medicacoes";
 import { ProtegidoPorSenha } from "@/components/ProtegidoPorSenha";
 import type { Medicacao } from "@/lib/ficha";
@@ -34,8 +35,8 @@ type ConsultaForm = {
   peso: string; temperatura: string; fc: string; fr: string; pas: string; glicemia: string; mucosas: string; hidratacao: string; dor: string; exameGeral: string; suspeitas: string; examesSolicitados: string; medicacoes: string; medicacoesDetalhadas: Medicacao[]; conduta: string; retorno: string; retornoEm: string;
 };
 type ProcedimentoForm = { tipo: string; indicacao: string; equipe: string; anestesia: string; achados: string; materiais: string; intercorrencias: string; posOperatorio: string; observacoes: string };
-type ItemCatalogo = { id: string; tipo: "servico" | "produto"; nome: string; preco: number | string; categoria?: string | null; faixas_peso?: unknown };
-type ItemComanda = { id: string; catalogoId?: string; nome: string; tipo: "servico" | "produto" | "exame"; quantidade: number; valorUnitario: string; automatico?: boolean; precoConfigurado: boolean; precoPorPeso?: AprovacaoPrecoPeso };
+type ItemCatalogo = { id: string; tipo: "servico" | "produto"; nome: string; preco: number | string; categoria?: string | null; faixas_peso?: unknown; canonico?: boolean };
+type ItemComanda = { id: string; catalogoId?: string; nome: string; tipo: "servico" | "produto" | "exame"; quantidade: number; valorUnitario: string; automatico?: boolean; precoConfigurado: boolean; precoPorPeso?: AprovacaoPrecoPeso; precoEditadoManualmente?: boolean };
 
 const ANIMAIS_KEY = "oricse-animais-v1";
 const TUTORES_KEY = "oricse-tutores-v1";
@@ -107,7 +108,7 @@ function pesoValido(valor: string) {
 }
 function numeroMoeda(valor: string) { const numero=parseValorMonetario(valor); return valor.trim()!==""&&Number.isFinite(numero)&&numero>=0?numero:null; }
 function moeda(valor: number) { return valor.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
-function valorCampo(valor: number | string | null | undefined) { const numero=Number(valor); return Number.isFinite(numero)?numero.toFixed(2).replace(".",","):""; }
+const valorCampo = valorFixoDoCatalogo;
 
 function resumoMedicacoes(lista: Medicacao[]) {
   return lista.map(item => [item.nome, item.dose, item.quantidade, item.via,
@@ -145,7 +146,9 @@ function RegistroClinico(){
   const [itemCatalogoId,setItemCatalogoId]=useState("");
   const [precoPorPesoPendente,setPrecoPorPesoPendente]=useState<{item:ItemCatalogo;linhaId?:string}|null>(null);
   const [itensComanda,setItensComanda]=useState<ItemComanda[]>([]);
+  const automaticosRemovidos = useRef(new Set<string>());
   const [responsavel,setResponsavel]=useState({id:"",nome:"Equipe clínica",crmv:""});
+  const naComanda = modo === "consulta" && etapa === 8;
   const chaveRascunho=`oricse-rascunho-consulta-${animalId}${agendamentoId ? "-" + agendamentoId : ""}`;
 
   useEffect(()=>{let ativo=true;void(async()=>{try{
@@ -175,44 +178,85 @@ function RegistroClinico(){
   useEffect(()=>{ if(!animalId||modo!=="consulta")return; const t=window.setTimeout(()=>oricseStorage.setItem(chaveRascunho,JSON.stringify(consulta)),250); return()=>window.clearTimeout(t); },[consulta,modo,animalId]);
   useEffect(() => {
     let ativo = true;
+    let ultimaConsulta = 0;
     async function carregarCatalogo() {
       if (!clinicaAnimalId) return;
+      const consultaAtual = ++ultimaConsulta;
+      if (naComanda) setCatalogoCarregando(true);
       try {
         const [legado,atual] = await Promise.all([
           (supabase as any).from("clinica_catalogo_itens")
             .select("id,tipo,nome,preco,categoria").eq("clinica_id",clinicaAnimalId).eq("ativo",true).order("nome"),
           (supabaseBanco as any).from("oricse_catalogo_itens")
-            .select("id,tipo,nome,valor,categoria,faixas_peso").eq("clinica_id",clinicaAnimalId).eq("ativo",true).order("nome"),
+            .select("id,tipo,nome,valor,categoria,faixas_peso").eq("clinica_id",clinicaAnimalId).eq("ativo",true).order("nome").order("id"),
         ]);
         if (legado.error && atual.error) throw legado.error;
         const principais: ItemCatalogo[] = (atual.data || []).map((x:any) => ({
           id: x.id, nome: x.nome, tipo: x.tipo, categoria: x.categoria,
-          preco: x.valor, faixas_peso: x.faixas_peso,
+          preco: x.valor, faixas_peso: x.faixas_peso, canonico: true,
         }));
-        const nomes = new Set(principais.map(x=>normalizar(x.nome)));
+        const chave = (x: ItemCatalogo) => `${x.tipo}:${normalizar(x.nome)}`;
+        const nomes = new Set(principais.map(chave));
         const demais: ItemCatalogo[] = (legado.data||[])
-          .filter((x:ItemCatalogo)=>!nomes.has(normalizar(x.nome)));
-        if (ativo) {
+          .filter((x:ItemCatalogo)=>!nomes.has(chave(x)));
+        if (ativo && consultaAtual === ultimaConsulta) {
           setCatalogo([...principais,...demais].sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")));
-          setCatalogoAviso("");
+          setCatalogoAviso(atual.error ? "Não foi possível verificar o catálogo atual." : "");
         }
       } catch(error) {
-        if (ativo) setCatalogoAviso((error as Error).message || "Não foi possível carregar serviços e produtos.");
+        if (ativo && consultaAtual === ultimaConsulta) {
+          setCatalogo([]);
+          setCatalogoAviso((error as Error).message || "Não foi possível carregar serviços e produtos.");
+        }
       } finally {
-        if (ativo) setCatalogoCarregando(false);
+        if (ativo && consultaAtual === ultimaConsulta) setCatalogoCarregando(false);
       }
     }
     void carregarCatalogo();
-    return () => { ativo=false; };
-  },[clinicaAnimalId]);
+    if (naComanda) window.addEventListener("focus", carregarCatalogo);
+    return () => { ativo=false; window.removeEventListener("focus", carregarCatalogo); };
+  },[clinicaAnimalId, naComanda]);
   useEffect(()=>{if(modo==="consulta"&&etapa===7)setReceituarioAtivado(true);},[modo,etapa]);
-  const existingAprovado=(item?:ItemComanda)=>Boolean(item?.precoPorPeso &&
-    item.precoPorPeso.valorAprovado===numeroMoeda(item.valorUnitario));
-  useEffect(()=>{ if(etapa!==8||modo!=="consulta")return; const exames=consulta.examesSolicitados.split(" · ").map(nome=>nome.trim()).filter(Boolean); const automaticos=["Consulta",...exames]; setItensComanda(atuais=>{ const idsNovos=new Set(automaticos.map(nome=>`automatico-${normalizar(nome)}`)); const manuais=atuais.filter(item=>!item.automatico); const atualizados=automaticos.map(nome=>{ const id=`automatico-${normalizar(nome)}`; const existente=atuais.find(item=>item.id===id); const nomeNormalizado=normalizar(nome); const itemCatalogo=catalogo.find(item=>normalizar(item.nome)===nomeNormalizado)||(nome==="Consulta"?catalogo.find(item=>/^consulta( clinica| veterinaria)?$/.test(normalizar(item.nome))):undefined); return { id, catalogoId:itemCatalogo?.id||existente?.catalogoId, nome:itemCatalogo?.nome||nome, tipo:nome==="Consulta"?"servico":"exame", quantidade:existente?.quantidade||1, valorUnitario:existente?.valorUnitario ||
-            (itemCatalogo && !faixasValidas(itemCatalogo.faixas_peso).length ? valorCampo(itemCatalogo.preco) : ""),
-          automatico:true,
-          precoConfigurado:existingAprovado(existente) || (Boolean(itemCatalogo) && !faixasValidas(itemCatalogo?.faixas_peso).length),
-          precoPorPeso:existente?.precoPorPeso } as ItemComanda; }); return [...atualizados,...manuais.filter(item=>!idsNovos.has(item.id))]; }); },[etapa,modo,consulta.examesSolicitados,catalogo]);
+  useEffect(() => {
+    if (!naComanda) return;
+    const exames = consulta.examesSolicitados.split(" · ").map(nome => nome.trim()).filter(Boolean);
+    const automaticos = ["Consulta", ...exames];
+    const ids = new Set(automaticos.map(nome => `automatico-${normalizar(nome)}`));
+    for (const id of automaticosRemovidos.current) {
+      if (!ids.has(id)) automaticosRemovidos.current.delete(id);
+    }
+    const ativos = automaticos.filter(nome => !automaticosRemovidos.current.has(`automatico-${normalizar(nome)}`));
+    setItensComanda(atuais => {
+      const atualizados = ativos.map((nome): ItemComanda => {
+        const id = `automatico-${normalizar(nome)}`;
+        const existente = atuais.find(item => item.id === id);
+        const consultaPadrao = nome === "Consulta";
+        // Serviços e produtos é a fonte principal, inclusive se uma clínica usa
+        // "Consulta clínica" ou "Consulta veterinária" em vez de "Consulta".
+        const itemCatalogo = consultaPadrao
+          ? encontrarServicoConsulta(catalogo)
+          : catalogo.find(item => normalizar(item.nome) === normalizar(nome));
+        const usaFaixas = faixasValidas(itemCatalogo?.faixas_peso).length > 0;
+        const precoPorPeso = usaFaixas && existente?.catalogoId === itemCatalogo?.id &&
+          existente?.precoPorPeso?.valorAprovado === numeroMoeda(existente?.valorUnitario ?? "")
+          ? existente.precoPorPeso : undefined;
+        const precoEditadoManualmente = !usaFaixas && existente?.precoEditadoManualmente;
+        const valorUnitario = sugerirValorDaConsulta({
+          valorCatalogo: itemCatalogo?.preco,
+          usaFaixas,
+          valorComAprovacao: precoPorPeso ? existente?.valorUnitario : undefined,
+          valorEditado: precoEditadoManualmente ? existente?.valorUnitario : undefined,
+        });
+        return {
+          id, catalogoId: itemCatalogo?.id, nome: itemCatalogo?.nome || nome,
+          tipo: consultaPadrao ? "servico" : "exame", quantidade: existente?.quantidade || 1,
+          valorUnitario, automatico: true, precoConfigurado: numeroMoeda(valorUnitario) !== null,
+          precoPorPeso, precoEditadoManualmente,
+        };
+      });
+      return [...atualizados, ...atuais.filter(item => !item.automatico && !ids.has(item.id))];
+    });
+  }, [naComanda, consulta.examesSolicitados, catalogo]);
 
 
   if(carregandoAnimal)return <main className="mx-auto max-w-4xl px-4 py-8"><div className="mt-5 rounded-2xl border p-6">Carregando animal…</div></main>;
@@ -270,9 +314,13 @@ function RegistroClinico(){
   function atualizarItemComanda(id:string,campo:"quantidade"|"valorUnitario",valor:string){
     setItensComanda(atuais=>atuais.map(item=>item.id===id?
       {...item,[campo]:campo==="quantidade"?Math.max(1,Math.floor(Number(valor)||1)):valor,
-        ...(campo==="valorUnitario" && item.precoPorPeso?{precoPorPeso:undefined,precoConfigurado:false}:{})}:item));
+        ...(campo==="valorUnitario"?{precoEditadoManualmente:true,precoPorPeso:undefined,
+          precoConfigurado:numeroMoeda(valor)!==null}:{})}:item));
   }
-  function removerItemComanda(id:string){ setItensComanda(atuais=>atuais.filter(item=>item.id!==id)); }
+  function removerItemComanda(id:string) {
+    if (itensComanda.some(item => item.id === id && item.automatico)) automaticosRemovidos.current.add(id);
+    setItensComanda(atuais => atuais.filter(item => item.id !== id));
+  }
 
   function etapaPreenchida(n:number){
     if(n===1)return Boolean(consulta.acessoRua||consulta.contatoAnimais||consulta.ambiente||consulta.moradia||consulta.ventilacao||consulta.apetite||consulta.exposicoes.length||consulta.vacinacao||consulta.vermifugacao||consulta.dieta||consulta.doencasPrevias||consulta.medicamentosRecentes||consulta.alergias);
@@ -310,6 +358,7 @@ function RegistroClinico(){
     if (!animal) return void toast.error("Animal não encontrado.");
     if(!consulta.queixa.trim())return void toast.error("Informe a queixa principal.");
     if(!itensComanda.length)return void toast.error("Adicione pelo menos um item à comanda.");
+    if(catalogoCarregando)return void toast.error("Aguarde a consulta dos preços do catálogo.");
     if(itensSemPreco.length)return void toast.error("Preencha o valor de todos os itens da comanda.");
     const pesoConsulta = consulta.peso.trim() ? pesoValido(consulta.peso) : "";
     if (consulta.peso.trim() && !pesoConsulta) return void toast.error("Informe um peso válido em kg.");
@@ -566,7 +615,7 @@ function RegistroClinico(){
               <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-950 p-5 text-white"><div><p className="text-xs font-bold uppercase tracking-wide text-white/60">Total da comanda</p><p className="mt-1 text-3xl font-black">{moeda(totalComanda)}</p></div><div className="text-right text-sm text-white/70"><p>{tutor?.nome||"Tutor não informado"}</p><p>{animal.nome}</p></div></section>
             </div>}
           </div>
-          <div className="sticky bottom-0 flex flex-wrap items-end justify-between gap-3 border-t bg-white/95 px-4 py-3 backdrop-blur sm:px-5"><label className="text-xs font-bold">Data da consulta<input type="date" value={data} onChange={e=>setData(e.target.value)} className="mt-1 block min-h-10 rounded-xl border bg-white px-3 text-sm font-normal"/></label><div className="ml-auto flex gap-2">{etapa>1&&<button onClick={()=>setEtapa(etapa-1)} className="rounded-xl border px-4 py-2.5 text-sm font-bold">Anterior</button>}{etapa<8?<button onClick={()=>setEtapa(etapa+1)} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground">{etapa===7?"Ir para a comanda":"Próximo"}</button>:<button disabled={salvandoConsulta} onClick={()=>void salvarConsulta()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground"><Save size={16}/> {salvandoConsulta ? "Salvando…" : "Finalizar consulta e lançar"}</button>}</div></div>
+          <div className="sticky bottom-0 flex flex-wrap items-end justify-between gap-3 border-t bg-white/95 px-4 py-3 backdrop-blur sm:px-5"><label className="text-xs font-bold">Data da consulta<input type="date" value={data} onChange={e=>setData(e.target.value)} className="mt-1 block min-h-10 rounded-xl border bg-white px-3 text-sm font-normal"/></label><div className="ml-auto flex gap-2">{etapa>1&&<button onClick={()=>setEtapa(etapa-1)} className="rounded-xl border px-4 py-2.5 text-sm font-bold">Anterior</button>}{etapa<8?<button onClick={()=>setEtapa(etapa+1)} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground">{etapa===7?"Ir para a comanda":"Próximo"}</button>:<button disabled={salvandoConsulta||catalogoCarregando} onClick={()=>void salvarConsulta()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground"><Save size={16}/> {salvandoConsulta ? "Salvando…" : "Finalizar consulta e lançar"}</button>}</div></div>
         </div>
       </div>
     </section>}
