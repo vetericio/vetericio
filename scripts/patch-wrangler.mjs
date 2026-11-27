@@ -14,7 +14,7 @@ if (existsSync(file)) {
   // O HTML da página inicial depende do hostname para renderizar a clínica
   // já na primeira resposta. Não servir um index.html estático de oricse.com.br
   // antes de executar a rota '/' do Worker.
-  config.assets.run_worker_first = ["/assets/*", "/"];
+  config.assets.run_worker_first = ["/assets/*", "/", "/oricse-build.json"];
   // Nitro emits a default-only main module. Cloudflare Durable Objects must
   // also be exported directly from the deployed entry module.
   // The thin entrypoint preserves Nitro's handler and exports the DO class.
@@ -23,10 +23,26 @@ if (existsSync(file)) {
   const wrapperPath = resolve(dirname(file), "oricse-worker-entry.ts");
   const importMain = "./" + relative(dirname(wrapperPath), originalMain).replaceAll("\\\\", "/");
   const importCoordinator = "../../src/lib/drive-write-coordinator.server.ts";
+  // Bake the same SHA supplied to Vite into the outer Worker, not the runtime
+  // environment or a static asset that may be absent or fall back to HTML.
+  const suppliedBuildId = process.env.VITE_ORICSE_BUILD_ID ?? "";
+  const buildId = /^[0-9a-f]{40}$/.test(suppliedBuildId) ? suppliedBuildId : null;
   writeFileSync(wrapperPath, [
     'import worker from ' + JSON.stringify(importMain) + ';',
     'export { OricseWriteCoordinator } from ' + JSON.stringify(importCoordinator) + ';',
-    'export default worker;',
+    'const buildId = ' + JSON.stringify(buildId) + ';',
+    'export default {',
+    '  ...worker,',
+    '  fetch(request, env, ctx) {',
+    '    if (new URL(request.url).pathname !== "/oricse-build.json") return worker.fetch(request, env, ctx);',
+    '    const headers = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" };',
+    '    if (request.method !== "GET" && request.method !== "HEAD") {',
+    '      return new Response(null, { status: 405, headers: { ...headers, allow: "GET, HEAD" } });',
+    '    }',
+    '    const payload = buildId ? { build: buildId } : { error: "build_identifier_unavailable" };',
+    '    return new Response(request.method === "HEAD" ? null : JSON.stringify(payload), { status: buildId ? 200 : 503, headers });',
+    '  },',
+    '};',
     '',
   ].join(String.fromCharCode(10)));
   config.main = "./oricse-worker-entry.ts";
