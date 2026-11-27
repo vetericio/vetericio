@@ -136,20 +136,67 @@ export function montarRelatorioReceitas({
   };
 }
 
-export function montarRelatorioMovimentos(movimentos: MovimentoRelatorio[]): DadosRelatorio {
+export type CompraControladoRelatorio = {
+  dataCompra: string;
+  produtoNome: string;
+  quantidade: number | null;
+  fornecedor: string | null;
+  notaFiscal: string | null;
+  lote: string | null;
+  autorNome: string;
+  status: "pendente" | "completo";
+};
+
+export function montarRelatorioMovimentos(
+  movimentos: MovimentoRelatorio[],
+  compras: CompraControladoRelatorio[] | null = null,
+): DadosRelatorio {
   const entradas = movimentos.filter((r) => r.tipo === "entrada").length;
+  const completas = compras?.filter((r) => r.status === "completo").length;
   return {
     indicadores: [
-      { rotulo: "Aquisições de controlados verificáveis", valor: "Não disponível" },
-      { rotulo: "Movimentos com classificação regulatória verificável", valor: "Não disponível" },
+      { rotulo: "Compras de controlados registradas", valor: completas ?? "Não disponível" },
+      {
+        rotulo: "Compras pendentes de revisão",
+        valor: compras && completas !== undefined ? compras.length - completas : "Não disponível",
+      },
       { rotulo: "Entradas gerais de estoque", valor: entradas },
       { rotulo: "Saídas gerais de estoque", valor: movimentos.length - entradas },
     ],
     notas: [
-      "O estoque do ORICSE não registra a classificação regulatória dos itens, fornecedor, nota fiscal, lote ou motivo da movimentação nesta trilha. Entrada de estoque não significa compra e saída não significa dispensação.",
-      "A tabela abaixo é a trilha operacional geral para conferência. Nenhum item é identificado como controlado e a listagem não substitui livro, documentos fiscais ou controles obrigatórios.",
+      compras === null
+        ? "Os registros de compras de controlados estão indisponíveis. Os movimentos abaixo não confirmam compras ou dispensações."
+        : "Considere como compras registradas apenas as marcadas como completas. Use Pendências para corrigir registros incompletos.",
+      "Registrar a compra não movimenta o estoque. A trilha de estoque é geral: uma entrada não comprova compra e uma saída não comprova dispensação. A listagem não substitui documentos fiscais ou controles obrigatórios.",
     ],
     tabelas: [
+      ...(compras === null
+        ? []
+        : [
+            {
+              titulo: "Compras de controlados informadas pela clínica",
+              colunas: [
+                "Data da compra",
+                "Produto",
+                "Quantidade",
+                "Fornecedor",
+                "Nota fiscal",
+                "Lote",
+                "Registrado por",
+                "Situação",
+              ],
+              linhas: compras.map((r) => [
+                dataBR(r.dataCompra),
+                r.produtoNome,
+                r.quantidade ?? "—",
+                r.fornecedor || "—",
+                r.notaFiscal || "—",
+                r.lote || "—",
+                r.autorNome,
+                r.status === "completo" ? "Completo" : "Pendente",
+              ]),
+            },
+          ]),
       {
         titulo: "Movimentações gerais de estoque (sem classificação regulatória)",
         colunas: [

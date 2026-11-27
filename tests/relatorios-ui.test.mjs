@@ -30,6 +30,7 @@ const trocas = new Map([
       "export const vincularOrcamentoRelatorio=()=>{throw new Error('A renderização inicial não deve gravar dados.')};",
     ),
   ],
+  ["@/components/ComprasControlados", modulo("export const ComprasControlados=()=>null;")],
   ["@/lib/portal-document.functions", modulo("export const baixarDocumentoPortal=()=>null;")],
   ["@/lib/relatorios-acesso", url("../src/lib/relatorios-acesso.ts")],
   ["@/lib/relatorios", url("../src/lib/relatorios.ts")],
@@ -96,4 +97,19 @@ test("Relatórios com duas permissões não aparecem para quem possui apenas uma
   assert.doesNotMatch(parcial, /18 · Plantões/);
   const completo = simular("vetericio", ["internacao.plantoes", "internacao.registrar"]);
   assert.match(completo, /18 · Plantões/);
+});
+
+test("Compras e Pendências aparecem no relatório 23, com registro só para quem pode movimentar", () => {
+  const leitura = simular("vetericio", ["estoque.catalogo.visualizar"]);
+  assert.match(leitura, /aria-pressed="true"[^>]*>23/);
+  assert.match(leitura, /Compras de controlados/);
+  assert.match(leitura, /Pendências/);
+  assert.doesNotMatch(leitura, /Registrar compra/);
+  const edicao = simular("vetericio", ["estoque.catalogo.visualizar", "estoque.movimentar"]);
+  assert.match(edicao, /Registrar compra/);
+  const outra = simular("outra-clinica-teste", [
+    "estoque.catalogo.visualizar",
+    "estoque.movimentar",
+  ]);
+  assert.doesNotMatch(outra, /Registrar compra|Compras de controlados|Pendências/);
 });
