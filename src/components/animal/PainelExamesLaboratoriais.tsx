@@ -13,7 +13,11 @@ import {
 } from "@/lib/exame-painel.functions";
 import {
   criarLinhasLab,
-  preencherReferenciasLab,
+  aplicarReferenciasDoLaboratorioLab,
+  faixaEtariaLaboratorial,
+  normalizarLaboratorio,
+  resultadosConfirmadosLab,
+  sugerirReferenciaLab,
   LABORATORIOS_ORIGEM,
   PAINEIS_LAB,
   salvarExameLabSchema,
@@ -21,6 +25,7 @@ import {
   unidadeComparavel,
   type ExameLab,
   type LinhaLab,
+  type LinhaLabRascunho,
   type PainelLab,
   type SerieLab,
 } from "@/lib/exame-painel";
@@ -79,7 +84,8 @@ export function PainelExamesLaboratoriais({
   const [aba, setAba] = useState<"registros" | "evolucao">("registros");
   const [editando, setEditando] = useState(false);
   const [painel, setPainel] = useState<PainelLab>("bioquimico");
-  const [linhas, setLinhas] = useState(() => criarLinhasLab("bioquimico"));
+  const [linhas, setLinhas] = useState<LinhaLabRascunho[]>(() => criarLinhasLab("bioquimico"));
+  const [conferiuSugestoes, setConferiuSugestoes] = useState(false);
   const [momento, setMomento] = useState(agora);
   const [laboratorio, setLaboratorio] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -115,11 +121,24 @@ export function PainelExamesLaboratoriais({
       ...(historico?.exames.map((e) => e.laboratorio) || []),
     ]),
   ];
+  const faixaEtaria = faixaEtariaLaboratorial(historico?.nascimento, momento.data);
+  const haSugestoes = linhas.some((l) => l.origemReferencia === "sugestao");
+  const temResultadoSugerido = linhas.some(
+    (l) => l.origemReferencia === "sugestao" && l.valor.trim(),
+  );
+  function linhasIniciais(tipo: PainelLab, data = momento.data) {
+    const idade = faixaEtariaLaboratorial(historico?.nascimento, data);
+    return criarLinhasLab(tipo).map((l) =>
+      sugerirReferenciaLab(l, historico?.especie ?? "Outra", idade),
+    );
+  }
   function iniciar() {
     chaveRegistro.current = crypto.randomUUID();
-    setMomento(agora());
+    const novoMomento = agora();
+    setMomento(novoMomento);
     setPainel("bioquimico");
-    setLinhas(criarLinhasLab("bioquimico"));
+    setLinhas(linhasIniciais("bioquimico", novoMomento.data));
+    setConferiuSugestoes(false);
     setLaboratorio("");
     setObservacoes("");
     setArquivo(null);
@@ -130,37 +149,55 @@ export function PainelExamesLaboratoriais({
   function trocarPainel(valor: PainelLab) {
     if (valor === painel) return;
     if (
-      linhas.some((l) => l.valor || l.referencia) &&
+      linhas.some((l) => l.valor || l.origemReferencia === "manual") &&
       !window.confirm("Trocar o painel e descartar as linhas preenchidas?")
     )
       return;
     setPainel(valor);
-    setLinhas(criarLinhasLab(valor));
+    setLinhas(linhasIniciais(valor));
+    setConferiuSugestoes(false);
     setStatus("");
   }
   function alterarLinha(id: string, chave: keyof Omit<LinhaLab, "parametroId">, valor: string) {
+    if (chave === "unidade" || chave === "valor") setConferiuSugestoes(false);
     setLinhas((ls) =>
-      ls.map((l) =>
-        l.parametroId !== id
-          ? l
-          : {
-              ...l,
-              [chave]: valor,
-              ...(chave === "unidade" && unidadeComparavel(l.unidade) !== unidadeComparavel(valor)
-                ? { referencia: "" }
-                : {}),
-            },
-      ),
+      ls.map((l) => {
+        if (l.parametroId !== id) return l;
+        if (chave === "referencia") return { ...l, referencia: valor, origemReferencia: "manual" };
+        if (chave === "unidade" && unidadeComparavel(l.unidade) !== unidadeComparavel(valor))
+          return { ...l, unidade: valor, referencia: "", origemReferencia: "manual" };
+        return { ...l, [chave]: valor };
+      }),
     );
   }
+  function renovarFaixas(data: string) {
+    const idade = faixaEtariaLaboratorial(historico?.nascimento, data);
+    setLinhas((ls) =>
+      ls.map((l) =>
+        l.origemReferencia === "manual"
+          ? l
+          : sugerirReferenciaLab(
+              { ...l, referencia: "", origemReferencia: undefined },
+              historico?.especie ?? "Outra",
+              idade,
+            ),
+      ),
+    );
+    setConferiuSugestoes(false);
+    setStatus("");
+  }
+  function limparSugestoes() {
+    setLinhas((ls) =>
+      ls.map((l) =>
+        l.origemReferencia === "sugestao"
+          ? { ...l, referencia: "", origemReferencia: undefined }
+          : l,
+      ),
+    );
+    setConferiuSugestoes(false);
+  }
   async function referencias(salvar: boolean) {
-    if (!laboratorio.trim() || ocupado || !historico) return;
-    if (
-      !salvar &&
-      linhas.some((l) => l.referencia) &&
-      !window.confirm("Substituir as referências já digitadas pelas referências do laboratório?")
-    )
-      return;
+    if (!laboratorio.trim() || ocupado || !historico || !faixaEtaria) return;
     setOcupado("referencias");
     setStatus("");
     try {
@@ -170,8 +207,11 @@ export function PainelExamesLaboratoriais({
         animalId,
         laboratorio: laboratorio.trim(),
         painel,
+        data: momento.data,
       };
       if (salvar) {
+        if (haSugestoes)
+          throw new Error("Edite ou limpe as sugestões antes de salvar faixas para o laboratório.");
         const refs = linhas
           .filter((l) => !l.parametroId.startsWith("personalizado-"))
           .map(({ parametroId, unidade, referencia }) => ({ parametroId, unidade, referencia }));
@@ -179,26 +219,21 @@ export function PainelExamesLaboratoriais({
           throw new Error("Preencha ao menos uma faixa para cadastrá-la.");
         if (
           !window.confirm(
-            "Substituir as faixas reutilizáveis deste laboratório, espécie e painel? Os exames anteriores não mudam.",
+            "Substituir as faixas reutilizáveis deste laboratório, espécie, faixa etária e painel? Os exames anteriores não mudam.",
           )
         )
           return;
         await salvarReferenciasLaboratoriais({ data: { ...a, referencias: refs } });
-        setStatus("Referências salvas para este laboratório, espécie e painel.");
+        setStatus("Referências salvas para este laboratório, espécie, faixa etária e painel.");
         setRevisao((r) => r + 1);
       } else {
         const resp = await listarReferenciasLaboratoriais({ data: a });
-        const preenchidas = preencherReferenciasLab(
-          linhas,
-          resp.referencias,
-          resp.especie,
-          laboratorio,
-        );
+        const preenchidas = aplicarReferenciasDoLaboratorioLab(linhas, resp.referencias);
         setLinhas(preenchidas);
         setStatus(
-          preenchidas.some((l) => l.referencia)
+          preenchidas.some((l) => l.origemReferencia === "laboratorio")
             ? "Confira as faixas com o laudo. Você pode ajustá-las neste exame."
-            : "Sem faixas cadastradas. Informe a referência do laudo quando disponível.",
+            : "Sem faixas cadastradas para este laboratório, espécie e idade. Use a referência do laudo.",
         );
       }
     } catch (e) {
@@ -224,7 +259,7 @@ export function PainelExamesLaboratoriais({
         laboratorio,
         observacoes,
         temPdf: !!arquivo,
-        resultados: linhas.filter((l) => l.valor.trim()),
+        resultados: resultadosConfirmadosLab(linhas, conferiuSugestoes),
       });
       if (!entrada.success)
         throw new Error(
@@ -356,7 +391,13 @@ export function PainelExamesLaboratoriais({
                   type="date"
                   max={agora().data}
                   value={momento.data}
-                  onChange={(e) => setMomento({ ...momento, data: e.target.value })}
+                  onChange={(e) => {
+                    const data = e.target.value;
+                    setMomento({ ...momento, data });
+                    if (faixaEtariaLaboratorial(historico.nascimento, data) !== faixaEtaria)
+                      renovarFaixas(data);
+                    else setConferiuSugestoes(false);
+                  }}
                 />
               </label>
               <label className="text-sm font-semibold">
@@ -378,9 +419,23 @@ export function PainelExamesLaboratoriais({
                   list={listaId}
                   value={laboratorio}
                   onChange={(e) => {
-                    setLaboratorio(e.target.value);
-                    setStatus("");
-                    setLinhas((ls) => ls.map((l) => ({ ...l, referencia: "" })));
+                    const valor = e.target.value;
+                    setLaboratorio(valor);
+                    if (normalizarLaboratorio(valor) !== normalizarLaboratorio(laboratorio)) {
+                      setStatus("");
+                      setConferiuSugestoes(false);
+                      setLinhas((ls) =>
+                        ls.map((l) =>
+                          l.origemReferencia === "laboratorio"
+                            ? sugerirReferenciaLab(
+                                { ...l, referencia: "", origemReferencia: undefined },
+                                historico.especie,
+                                faixaEtaria,
+                              )
+                            : l,
+                        ),
+                      );
+                    }
                   }}
                 />
                 <datalist id={listaId}>
@@ -390,8 +445,17 @@ export function PainelExamesLaboratoriais({
                 </datalist>
               </label>
             </div>
-            {painel !== "outros" && historico.especie !== "Outra" && (
+            {painel !== "outros" && historico.especie !== "Outra" && !faixaEtaria && (
+              <p className="text-sm text-muted-foreground">
+                Idade não informada ou incompatível com a data do exame. Use a faixa do laudo.
+              </p>
+            )}
+            {painel !== "outros" && historico.especie !== "Outra" && faixaEtaria && (
               <div className="flex flex-wrap gap-2">
+                <p className="w-full text-sm text-muted-foreground">
+                  Referências: {historico.especie} ·{" "}
+                  {faixaEtaria === "12-meses-ou-mais" ? "12 meses ou mais" : "Menos de 12 meses"}
+                </p>
                 <button
                   type="button"
                   className={botao}
@@ -407,9 +471,20 @@ export function PainelExamesLaboratoriais({
                     disabled={!laboratorio.trim()}
                     onClick={() => void referencias(true)}
                   >
-                    Salvar referências do laboratório e espécie
+                    Salvar referências do laboratório para esta idade
                   </button>
                 )}
+              </div>
+            )}
+            {haSugestoes && (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <p className="w-full text-muted-foreground">
+                  Faixas padrão sugeridas para adultos. Use a faixa do laudo se for diferente e
+                  confira a espécie, a idade e a unidade.
+                </p>
+                <button type="button" className={botao} onClick={limparSugestoes}>
+                  Limpar sugestões
+                </button>
               </div>
             )}
             <p className="text-xs text-muted-foreground">
@@ -483,11 +558,14 @@ export function PainelExamesLaboratoriais({
                     <input
                       className={campo}
                       aria-label={"Referência: " + nome}
-                      placeholder="Sem faixa"
+                      placeholder="Faixa do laudo"
                       maxLength={140}
                       value={l.referencia}
                       onChange={(e) => alterarLinha(l.parametroId, "referencia", e.target.value)}
                     />
+                    {l.origemReferencia === "sugestao" && (
+                      <span className="text-xs text-muted-foreground">Padrão sugerido</span>
+                    )}
                   </div>
                 </div>
               );
@@ -548,6 +626,19 @@ export function PainelExamesLaboratoriais({
             <p role="status" className="rounded-lg bg-muted p-3 text-sm">
               {status}
             </p>
+          )}
+          {temResultadoSugerido && (
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={conferiuSugestoes}
+                disabled={!!ocupado}
+                onChange={(e) => setConferiuSugestoes(e.target.checked)}
+              />
+              Conferi com o laudo. Guardar as faixas sugeridas nos resultados preenchidos. Se não
+              marcar, só as faixas sugeridas ficam de fora.
+            </label>
           )}
           <div className="flex flex-wrap gap-2">
             <button type="submit" className={primario} disabled={!!ocupado}>
