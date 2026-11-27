@@ -62,7 +62,7 @@ export const GRUPOS_MENU = [
       { to: "/financeiro", rotulo: "Contas a receber" },
       { to: "/financeiro", rotulo: "Despesas" },
       { to: "/financeiro", rotulo: "Lançamentos" },
-      { to: "/financeiro", rotulo: "Relatórios" },
+      { to: "/relatorios", rotulo: "Relatórios" },
     ],
   },
   {

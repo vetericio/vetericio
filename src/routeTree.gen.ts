@@ -27,8 +27,10 @@ import { Route as AnamneseRouteImport } from './routes/anamnese'
 import { Route as AnimaisRouteImport } from './routes/animais'
 import { Route as AnimalRouteImport } from './routes/animal'
 import { Route as AssinarRouteImport } from './routes/assinar'
+import { Route as AvaliarAtendimentoRouteImport } from './routes/avaliar-atendimento'
 import { Route as BancoHorasRouteImport } from './routes/banco-horas'
 import { Route as BanhoTosaRouteImport } from './routes/banho-tosa'
+import { Route as BuscaInteligenteRouteImport } from './routes/busca-inteligente'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as ComandasRouteImport } from './routes/comandas'
 import { Route as ConfiguracaoSiteRouteImport } from './routes/configuracao-site'
@@ -75,6 +77,7 @@ import { Route as ReceituarioRouteImport } from './routes/receituario'
 import { Route as RecepcaoRouteImport } from './routes/recepcao'
 import { Route as RegistroClinicoRouteImport } from './routes/registro-clinico'
 import { Route as RegistrosRouteImport } from './routes/registros'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as RhRouteImport } from './routes/rh'
 import { Route as SimuladorPagamentosRouteImport } from './routes/simulador-pagamentos'
 import { Route as SincronizacaoRouteImport } from './routes/sincronizacao'
@@ -192,6 +195,11 @@ const AssinarRoute = AssinarRouteImport.update({
   path: '/assinar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AvaliarAtendimentoRoute = AvaliarAtendimentoRouteImport.update({
+  id: '/avaliar-atendimento',
+  path: '/avaliar-atendimento',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BancoHorasRoute = BancoHorasRouteImport.update({
   id: '/banco-horas',
   path: '/banco-horas',
@@ -200,6 +208,11 @@ const BancoHorasRoute = BancoHorasRouteImport.update({
 const BanhoTosaRoute = BanhoTosaRouteImport.update({
   id: '/banho-tosa',
   path: '/banho-tosa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuscaInteligenteRoute = BuscaInteligenteRouteImport.update({
+  id: '/busca-inteligente',
+  path: '/busca-inteligente',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogoRoute = CatalogoRouteImport.update({
@@ -432,6 +445,11 @@ const RegistrosRoute = RegistrosRouteImport.update({
   path: '/registros',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RhRoute = RhRouteImport.update({
   id: '/rh',
   path: '/rh',
@@ -582,8 +600,10 @@ export interface FileRoutesByFullPath {
   '/animais': typeof AnimaisRoute
   '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/avaliar-atendimento': typeof AvaliarAtendimentoRoute
   '/banco-horas': typeof BancoHorasRoute
   '/banho-tosa': typeof BanhoTosaRoute
+  '/busca-inteligente': typeof BuscaInteligenteRoute
   '/catalogo': typeof CatalogoRoute
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
@@ -630,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
+  '/relatorios': typeof RelatoriosRoute
   '/rh': typeof RhRoute
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
@@ -675,8 +696,10 @@ export interface FileRoutesByTo {
   '/animais': typeof AnimaisRoute
   '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/avaliar-atendimento': typeof AvaliarAtendimentoRoute
   '/banco-horas': typeof BancoHorasRoute
   '/banho-tosa': typeof BanhoTosaRoute
+  '/busca-inteligente': typeof BuscaInteligenteRoute
   '/catalogo': typeof CatalogoRoute
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
@@ -723,6 +746,7 @@ export interface FileRoutesByTo {
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
+  '/relatorios': typeof RelatoriosRoute
   '/rh': typeof RhRoute
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
@@ -769,8 +793,10 @@ export interface FileRoutesById {
   '/animais': typeof AnimaisRoute
   '/animal': typeof AnimalRoute
   '/assinar': typeof AssinarRoute
+  '/avaliar-atendimento': typeof AvaliarAtendimentoRoute
   '/banco-horas': typeof BancoHorasRoute
   '/banho-tosa': typeof BanhoTosaRoute
+  '/busca-inteligente': typeof BuscaInteligenteRoute
   '/catalogo': typeof CatalogoRoute
   '/comandas': typeof ComandasRoute
   '/configuracao-site': typeof ConfiguracaoSiteRoute
@@ -817,6 +843,7 @@ export interface FileRoutesById {
   '/recepcao': typeof RecepcaoRoute
   '/registro-clinico': typeof RegistroClinicoRoute
   '/registros': typeof RegistrosRoute
+  '/relatorios': typeof RelatoriosRoute
   '/rh': typeof RhRoute
   '/simulador-pagamentos': typeof SimuladorPagamentosRoute
   '/sincronizacao': typeof SincronizacaoRoute
@@ -864,8 +891,10 @@ export interface FileRouteTypes {
     | '/animais'
     | '/animal'
     | '/assinar'
+    | '/avaliar-atendimento'
     | '/banco-horas'
     | '/banho-tosa'
+    | '/busca-inteligente'
     | '/catalogo'
     | '/comandas'
     | '/configuracao-site'
@@ -912,6 +941,7 @@ export interface FileRouteTypes {
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
+    | '/relatorios'
     | '/rh'
     | '/simulador-pagamentos'
     | '/sincronizacao'
@@ -957,8 +987,10 @@ export interface FileRouteTypes {
     | '/animais'
     | '/animal'
     | '/assinar'
+    | '/avaliar-atendimento'
     | '/banco-horas'
     | '/banho-tosa'
+    | '/busca-inteligente'
     | '/catalogo'
     | '/comandas'
     | '/configuracao-site'
@@ -1005,6 +1037,7 @@ export interface FileRouteTypes {
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
+    | '/relatorios'
     | '/rh'
     | '/simulador-pagamentos'
     | '/sincronizacao'
@@ -1050,8 +1083,10 @@ export interface FileRouteTypes {
     | '/animais'
     | '/animal'
     | '/assinar'
+    | '/avaliar-atendimento'
     | '/banco-horas'
     | '/banho-tosa'
+    | '/busca-inteligente'
     | '/catalogo'
     | '/comandas'
     | '/configuracao-site'
@@ -1098,6 +1133,7 @@ export interface FileRouteTypes {
     | '/recepcao'
     | '/registro-clinico'
     | '/registros'
+    | '/relatorios'
     | '/rh'
     | '/simulador-pagamentos'
     | '/sincronizacao'
@@ -1144,8 +1180,10 @@ export interface RootRouteChildren {
   AnimaisRoute: typeof AnimaisRoute
   AnimalRoute: typeof AnimalRoute
   AssinarRoute: typeof AssinarRoute
+  AvaliarAtendimentoRoute: typeof AvaliarAtendimentoRoute
   BancoHorasRoute: typeof BancoHorasRoute
   BanhoTosaRoute: typeof BanhoTosaRoute
+  BuscaInteligenteRoute: typeof BuscaInteligenteRoute
   CatalogoRoute: typeof CatalogoRoute
   ComandasRoute: typeof ComandasRoute
   ConfiguracaoSiteRoute: typeof ConfiguracaoSiteRoute
@@ -1192,6 +1230,7 @@ export interface RootRouteChildren {
   RecepcaoRoute: typeof RecepcaoRoute
   RegistroClinicoRoute: typeof RegistroClinicoRoute
   RegistrosRoute: typeof RegistrosRoute
+  RelatoriosRoute: typeof RelatoriosRoute
   RhRoute: typeof RhRoute
   SimuladorPagamentosRoute: typeof SimuladorPagamentosRoute
   SincronizacaoRoute: typeof SincronizacaoRoute
@@ -1347,6 +1386,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AssinarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/avaliar-atendimento': {
+      id: '/avaliar-atendimento'
+      path: '/avaliar-atendimento'
+      fullPath: '/avaliar-atendimento'
+      preLoaderRoute: typeof AvaliarAtendimentoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/banco-horas': {
       id: '/banco-horas'
       path: '/banco-horas'
@@ -1359,6 +1405,13 @@ declare module '@tanstack/react-router' {
       path: '/banho-tosa'
       fullPath: '/banho-tosa'
       preLoaderRoute: typeof BanhoTosaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/busca-inteligente': {
+      id: '/busca-inteligente'
+      path: '/busca-inteligente'
+      fullPath: '/busca-inteligente'
+      preLoaderRoute: typeof BuscaInteligenteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalogo': {
@@ -1683,6 +1736,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegistrosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rh': {
       id: '/rh'
       path: '/rh'
@@ -1880,8 +1940,10 @@ const rootRouteChildren: RootRouteChildren = {
   AnimaisRoute: AnimaisRoute,
   AnimalRoute: AnimalRoute,
   AssinarRoute: AssinarRoute,
+  AvaliarAtendimentoRoute: AvaliarAtendimentoRoute,
   BancoHorasRoute: BancoHorasRoute,
   BanhoTosaRoute: BanhoTosaRoute,
+  BuscaInteligenteRoute: BuscaInteligenteRoute,
   CatalogoRoute: CatalogoRoute,
   ComandasRoute: ComandasRoute,
   ConfiguracaoSiteRoute: ConfiguracaoSiteRoute,
@@ -1928,6 +1990,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecepcaoRoute: RecepcaoRoute,
   RegistroClinicoRoute: RegistroClinicoRoute,
   RegistrosRoute: RegistrosRoute,
+  RelatoriosRoute: RelatoriosRoute,
   RhRoute: RhRoute,
   SimuladorPagamentosRoute: SimuladorPagamentosRoute,
   SincronizacaoRoute: SincronizacaoRoute,
