@@ -1,6 +1,7 @@
 import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { oricseStorage } from "@/lib/oricse-storage";
+import { SelecionarTutorComanda } from "@/components/SelecionarTutorComanda";
 import { ComandaAtendimento } from "@/components/ComandaAtendimento";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -211,12 +212,19 @@ export function Comandas() {
     };
   }, []);
 
+  const [cadastrosClinicaId, setCadastrosClinicaId] = useState("");
+  const cadastrosProntos = !!clinicaId && clinicaId === cadastrosClinicaId
+    && !carregandoPermissoes && !carregandoCadastros && !erroCadastros;
+
   // Cadastros pertencem à clínica ativa no banco; armazenamento local não é a fonte de verdade.
   useEffect(() => {
     if (carregandoPermissoes) return;
     let ativo = true;
     setTutores([]);
     setAnimais([]);
+    setCadastrosClinicaId("");
+    setTutorIdNovo("");
+    setAnimalIdNovo("");
     setCarregandoCadastros(true);
     setErroCadastros("");
     if (!clinicaId) {
@@ -247,6 +255,7 @@ export function Comandas() {
           sexo: String(a.sexo || a.dados?.sexo || ""),
           pesoKg: a.peso_kg == null ? null : Number(a.peso_kg),
         })));
+        setCadastrosClinicaId(clinicaId);
         setErroCadastros("");
       } catch (error) {
         if (!ativo) return;
@@ -336,6 +345,7 @@ export function Comandas() {
 
   function abrirComanda(evento: FormEvent) {
     evento.preventDefault();
+    if (!cadastrosProntos) return;
     const tutor = tutores.find((item) => item.id === tutorIdNovo);
     const animal = animaisDoTutor.find((item) => item.id === animalIdNovo);
     if (!tutor) return void toast.error("Selecione o tutor.");
@@ -693,41 +703,29 @@ export function Comandas() {
                 ))}
               </select>
             </label>
-            <label className="block text-sm font-semibold">
-              Tutor
-              <select
-                value={tutorIdNovo}
-                onChange={(evento) => {
-                  setTutorIdNovo(evento.target.value);
-                  setAnimalIdNovo("");
-                }}
-                className={`${inputClass} mt-1`}
-              >
-                <option value="">Selecione o tutor</option>
-                {[...tutores]
-                  .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-                  .map((tutor) => (
-                    <option key={tutor.id} value={tutor.id}>
-                      {tutor.nome}
-                      {tutor.codigoPublico || tutor.codigo_publico
-                        ? ` · ${tutor.codigoPublico || tutor.codigo_publico}`
-                        : ""}
-                    </option>
-                  ))}
-              </select>
-            </label>
+            <SelecionarTutorComanda
+              key={clinicaId}
+              tutores={cadastrosProntos ? tutores : []}
+              tutorId={cadastrosProntos ? tutorIdNovo : ""}
+              disabled={!cadastrosProntos}
+              onSelecionar={(id) => {
+                if (id === tutorIdNovo) return;
+                setTutorIdNovo(id);
+                setAnimalIdNovo("");
+              }}
+            />
             <label className="block text-sm font-semibold">
               Animal
               <select
-                value={animalIdNovo}
+                value={cadastrosProntos ? animalIdNovo : ""}
                 onChange={(evento) => setAnimalIdNovo(evento.target.value)}
-                disabled={!tutorIdNovo || carregandoCadastros}
+                disabled={!cadastrosProntos || !tutorIdNovo}
                 className={`${inputClass} mt-1 disabled:bg-muted/40`}
               >
                 <option value="">
-                  {tutorIdNovo ? "Selecione o animal" : "Escolha primeiro o tutor"}
+                  {cadastrosProntos && tutorIdNovo ? "Selecione o animal" : "Escolha primeiro o tutor"}
                 </option>
-                {animaisDoTutor.map((animal) => (
+                {cadastrosProntos && animaisDoTutor.map((animal) => (
                   <option key={animal.id} value={animal.id}>
                     {animal.nome}
                     {animal.especie ? ` · ${animal.especie}` : ""}
@@ -737,7 +735,7 @@ export function Comandas() {
             </label>
             <button
               type="submit"
-              disabled={carregandoResponsavel || carregandoCadastros || !!erroCadastros || !responsavel.id}
+              disabled={carregandoResponsavel || !cadastrosProntos || !responsavel.id || !tutorIdNovo || !animalIdNovo}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ReceiptText size={17} /> Criar comanda
