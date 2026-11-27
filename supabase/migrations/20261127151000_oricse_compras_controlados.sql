@@ -1,6 +1,17 @@
 -- Livro auxiliar de compras declaradas pela clínica. Nenhum saldo, movimento de
 -- estoque ou lançamento financeiro é gerado; o produto não é classificado no catálogo.
 begin;
+set local lock_timeout = '5s';
+
+-- Nem todo ambiente recebeu a migração que inicializa o schema privado.
+do $$
+begin
+  if to_regnamespace('oricse_private') is null then
+    create schema oricse_private;
+    revoke all on schema oricse_private from public, anon, authenticated;
+  end if;
+end;
+$$;
 
 create table public.oricse_compras_controlados (
   id uuid primary key default gen_random_uuid(),

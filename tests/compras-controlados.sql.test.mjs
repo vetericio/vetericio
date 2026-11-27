@@ -21,8 +21,6 @@ test(
     create role anon;
     create role service_role;
     create schema auth;
-    create schema oricse_private;
-    revoke all on schema oricse_private from public, anon, authenticated;
     create table auth.users (id uuid primary key, email text, raw_app_meta_data jsonb);
     create function auth.uid() returns uuid language sql stable as
     $$select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid$$;
@@ -69,6 +67,12 @@ test(
         "utf8",
       ),
     );
+    const {
+      rows: [schema],
+    } = await db.query(
+      "select has_schema_privilege('authenticated', 'oricse_private', 'USAGE') as acesso",
+    );
+    assert.equal(schema.acesso, false);
     const autorizar = async (ator, role = "authenticated") => {
       await db.exec("reset role");
       await db.query("select set_config('request.jwt.claim.sub', $1, false)", [ator ?? ""]);

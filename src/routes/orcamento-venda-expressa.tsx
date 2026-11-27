@@ -14,7 +14,7 @@ import { PrecoPorPesoOrcamento } from "@/components/PrecoPorPesoOrcamento";
 import { calcularPrecoOrcamento, type PerfilOrcamento } from "@/lib/preco-orcamento";
 import { faixasValidas, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
 import { obterModeloDocumentoEmissao } from "@/lib/configuracoes-clinica.functions";
-import { obterTemaDocumentoPremium, urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao } from "@/lib/modelos-documentos";
+import { desenharFundoTemaPremiumCanvas, obterTemaDocumentoPremium, urlFundoDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao } from "@/lib/modelos-documentos";
 
 export const Route = createFileRoute("/orcamento-venda-expressa")({ component: OrcamentoVendaExpressa });
 
@@ -161,7 +161,7 @@ function OrcamentoVendaExpressa() {
           logoAlternativa: identidadeLogo.logoAlternativa || texto(logo.data?.logo_url),
         };
         const { prepararLogoDocumento } = await import("@/lib/modelos-documentos-pdf");
-        const logoPronta = await prepararLogoDocumento(identidadeComAlternativa, true);
+        const logoPronta = await prepararLogoDocumento(identidadeComAlternativa, true, true);
         if (logoPronta) {
           const imagemLogo = await new Promise<HTMLImageElement | null>(resolve => {
             const imagem = new Image();
@@ -208,20 +208,29 @@ function OrcamentoVendaExpressa() {
     }
     const largura = 1240, altura = Math.max(1754, 730 + linhas.length * 72 + (observacoes.length > 0 ? 180 + Math.ceil(observacoes.length / 70) * 30 : 0));
     const tema = obterTemaDocumentoPremium(modeloDocumentoOrcamento.fundo);
-    const corMarca = tema?.acento || "#692b40";
-    const corPapel = tema?.papel || "#ffffff";
+    // O tema altera apenas o fundo; os textos e a tabela mantêm o visual próprio do orçamento.
+    const corMarca = "#692b40";
     const canvas = document.createElement("canvas"); canvas.width = largura; canvas.height = altura;
     const ctx = canvas.getContext("2d"); if (!ctx) return null;
-    ctx.fillStyle = corPapel; ctx.fillRect(0, 0, largura, altura);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, largura, altura);
     if (fundoClinica) {
       const alturaPagina = 1754;
       for (let y = 0; y < altura; y += alturaPagina) {
         ctx.drawImage(fundoClinica, 0, y, largura, alturaPagina);
       }
     }
-    if (tema) desenharTemaPremiumOrcamento(ctx, tema.id, largura, altura, corMarca);
+    if (tema) desenharFundoTemaPremiumCanvas(ctx, tema.id, largura, altura);
     else if (!fundoClinica) { ctx.fillStyle = corMarca; ctx.fillRect(0, 0, largura, 16); }
-    if (logoClinica) ctx.drawImage(logoClinica, 74, 42, 150, 62);
+    if (logoClinica) {
+      const larguraOriginal = logoClinica.naturalWidth || logoClinica.width;
+      const alturaOriginal = logoClinica.naturalHeight || logoClinica.height;
+      const escalaLogo = Math.min(150 / larguraOriginal, 62 / alturaOriginal);
+      const larguraLogo = larguraOriginal * escalaLogo;
+      const alturaLogo = alturaOriginal * escalaLogo;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(logoClinica, 74 + (150 - larguraLogo) / 2, 42 + (62 - alturaLogo) / 2, larguraLogo, alturaLogo);
+    }
     ctx.fillStyle = "#182239"; ctx.font = "bold 40px Arial";
     ctx.fillText(texto(identidadeDocumento?.nome) || texto(clinica.nome) || texto(clinica.clinica_nome) || "Clínica veterinária", logoClinica ? 250 : 74, 105);
     ctx.font = "22px Arial"; ctx.fillStyle = "#4b5563";
@@ -253,7 +262,7 @@ function OrcamentoVendaExpressa() {
       ctx.font = "20px Arial"; ctx.fillStyle = "#4b5563";
       ctx.fillText([animal.especie, animal.raca, animal.sexo, animal.peso_kg ? animal.peso_kg + " kg" : ""].filter(Boolean).join(" · "), 610, 484, 540);
     }
-    ctx.fillStyle = tema?.quadro || modeloDocumentoOrcamento.corQuadros || "#f5eef1"; ctx.fillRect(74, 510, 1092, 58);
+    ctx.fillStyle = modeloDocumentoOrcamento.corQuadros || "#f5eef1"; ctx.fillRect(74, 510, 1092, 58);
     ctx.fillStyle = corMarca; ctx.font = "bold 23px Arial";
     ctx.fillText("DESCRIÇÃO", 93, 547); ctx.fillText("QTD.", 780, 547); ctx.fillText("TOTAL", 980, 547);
     let y = 617;
@@ -372,84 +381,4 @@ function OrcamentoVendaExpressa() {
       <button type="button" onClick={()=>void compartilhar()} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><Send size={18}/> Enviar ao tutor</button>
     </div>
   </main>;
-}
-
-function desenharTemaPremiumOrcamento(ctx: CanvasRenderingContext2D, id: string, largura: number, altura: number, acento: string) {
-  const alturaPagina = 1754;
-  for (let topo = 0; topo < altura; topo += alturaPagina) {
-    const margem = largura * 0.036;
-    if (id === "13") {
-      ctx.fillStyle = "#111111";
-      ctx.fillRect(0, topo, largura, alturaPagina * 0.006);
-      ctx.fillRect(0, topo + alturaPagina * 0.992, largura, alturaPagina * 0.008);
-    } else if (id === "14") {
-      ctx.strokeStyle = "#bc984f";
-      ctx.lineWidth = 3;
-      ctx.strokeRect(margem, topo + alturaPagina * 0.013, largura - margem * 2, alturaPagina * 0.967);
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(margem * 1.25, topo + alturaPagina * 0.018, largura - margem * 2.5, alturaPagina * 0.957);
-    } else if (id === "15") {
-      ctx.fillStyle = acento;
-      ctx.fillRect(0, topo, largura, alturaPagina * 0.052);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "20px Arial";
-      ctx.textAlign = "right";
-      ctx.fillText("CUIDADO E PRECISÃO", largura - margem, topo + alturaPagina * 0.033);
-      ctx.strokeStyle = "#d8abb9";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(margem, topo + alturaPagina * 0.982);
-      ctx.lineTo(largura - margem, topo + alturaPagina * 0.982);
-      ctx.stroke();
-      ctx.strokeStyle = "#edd3d9";
-      for (let n = 0; n < 3; n++) {
-        ctx.beginPath();
-        ctx.ellipse(largura * 0.965, topo + alturaPagina * 0.175, largura * (0.06 + n * 0.03), alturaPagina * (0.022 + n * 0.01), 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    } else if (id === "16") {
-      ctx.fillStyle = acento;
-      ctx.fillRect(0, topo, largura, alturaPagina * 0.009);
-      ctx.strokeStyle = "#d6eff0";
-      ctx.lineWidth = 2;
-      for (let n = 0; n < 3; n++) {
-        ctx.beginPath();
-        ctx.ellipse(largura * 0.98, topo + alturaPagina * (0.43 + n * 0.022), largura * 0.09, alturaPagina * 0.023, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    } else if (id === "17") {
-      ctx.fillStyle = "#e9f0e7";
-      if (typeof ctx.roundRect === "function") {
-        ctx.beginPath();
-        ctx.roundRect(margem, topo + alturaPagina * 0.022, largura - margem * 2, alturaPagina * 0.084, margem * 0.25);
-        ctx.fill();
-      } else ctx.fillRect(margem, topo + alturaPagina * 0.022, largura - margem * 2, alturaPagina * 0.084);
-      ctx.strokeStyle = "#90ac93";
-      ctx.lineWidth = 2;
-      const bx = largura * 0.90, by = topo + alturaPagina * 0.91;
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx + largura * 0.027, by - alturaPagina * 0.105);
-      ctx.stroke();
-      for (let n = 0; n < 5; n++) {
-        const y = by - alturaPagina * (0.02 + n * 0.019);
-        const x = bx + largura * (0.005 + n * 0.004);
-        ctx.beginPath();
-        ctx.ellipse(x + (n % 2 ? 5 : -5), y, 15, 7, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    } else if (id === "18") {
-      ctx.fillStyle = acento;
-      ctx.fillRect(0, topo, largura, alturaPagina * 0.01);
-      ctx.fillRect(0, topo + alturaPagina * 0.989, largura, alturaPagina * 0.011);
-      ctx.strokeStyle = "#edcdbf";
-      ctx.lineWidth = 2;
-      for (let n = 0; n < 3; n++) {
-        ctx.beginPath();
-        ctx.ellipse(largura * 0.98, topo + alturaPagina * 0.22, largura * (0.11 + n * 0.03), alturaPagina * (0.042 + n * 0.02), 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    }
-  }
-  ctx.textAlign = "left";
 }

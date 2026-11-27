@@ -60,6 +60,89 @@ export function obterTemaDocumentoPremium(id: string): TemaDocumentoPremium | nu
   return tema ? { ...tema, id } : null;
 }
 
+/** Desenha somente o fundo dos temas premium, sem inserir texto ou conteúdo do documento. */
+export function desenharFundoTemaPremiumCanvas(ctx: CanvasRenderingContext2D, id: string, largura: number, altura: number) {
+  const tema = obterTemaDocumentoPremium(id);
+  if (!tema) return;
+
+  ctx.save();
+  ctx.fillStyle = tema.papel;
+  ctx.fillRect(0, 0, largura, altura);
+  const alturaPagina = 1754;
+  const margem = largura * 0.036;
+  for (let topo = 0; topo < altura; topo += alturaPagina) {
+    if (id === "13") {
+      ctx.fillStyle = "#111111";
+      ctx.fillRect(0, topo, largura, alturaPagina * 0.006);
+      ctx.fillRect(0, topo + alturaPagina * 0.992, largura, alturaPagina * 0.008);
+    } else if (id === "14") {
+      ctx.strokeStyle = "#bc984f";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(margem, topo + alturaPagina * 0.013, largura - margem * 2, alturaPagina * 0.967);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(margem * 1.25, topo + alturaPagina * 0.018, largura - margem * 2.5, alturaPagina * 0.957);
+    } else if (id === "15") {
+      ctx.fillStyle = "#64243d";
+      ctx.fillRect(0, topo, largura, alturaPagina * 0.052);
+      ctx.strokeStyle = "#d8abb9";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(margem, topo + alturaPagina * 0.982);
+      ctx.lineTo(largura - margem, topo + alturaPagina * 0.982);
+      ctx.stroke();
+      ctx.strokeStyle = "#edd3d9";
+      for (let n = 0; n < 3; n++) {
+        ctx.beginPath();
+        ctx.ellipse(largura * 0.965, topo + alturaPagina * 0.175, largura * (0.06 + n * 0.03), alturaPagina * (0.022 + n * 0.01), 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (id === "16") {
+      ctx.fillStyle = "#00899a";
+      ctx.fillRect(0, topo, largura, alturaPagina * 0.009);
+      ctx.strokeStyle = "#d6eff0";
+      ctx.lineWidth = 2;
+      for (let n = 0; n < 3; n++) {
+        ctx.beginPath();
+        ctx.ellipse(largura * 0.98, topo + alturaPagina * (0.43 + n * 0.022), largura * 0.09, alturaPagina * 0.023, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (id === "17") {
+      ctx.fillStyle = "#e9f0e7";
+      if (typeof ctx.roundRect === "function") {
+        ctx.beginPath();
+        ctx.roundRect(margem, topo + alturaPagina * 0.022, largura - margem * 2, alturaPagina * 0.084, margem * 0.25);
+        ctx.fill();
+      } else ctx.fillRect(margem, topo + alturaPagina * 0.022, largura - margem * 2, alturaPagina * 0.084);
+      ctx.strokeStyle = "#90ac93";
+      ctx.lineWidth = 2;
+      const bx = largura * 0.90, by = topo + alturaPagina * 0.91;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + largura * 0.027, by - alturaPagina * 0.105);
+      ctx.stroke();
+      for (let n = 0; n < 5; n++) {
+        const y = by - alturaPagina * (0.02 + n * 0.019);
+        const x = bx + largura * (0.005 + n * 0.004);
+        ctx.beginPath();
+        ctx.ellipse(x + (n % 2 ? 5 : -5), y, 15, 7, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (id === "18") {
+      ctx.fillStyle = "#c97654";
+      ctx.fillRect(0, topo, largura, alturaPagina * 0.01);
+      ctx.fillRect(0, topo + alturaPagina * 0.989, largura, alturaPagina * 0.011);
+      ctx.strokeStyle = "#edcdbf";
+      ctx.lineWidth = 2;
+      for (let n = 0; n < 3; n++) {
+        ctx.beginPath();
+        ctx.ellipse(largura * 0.98, topo + alturaPagina * 0.22, largura * (0.11 + n * 0.03), alturaPagina * (0.042 + n * 0.02), 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
 export const COR_QUADROS_PADRAO = "#a6c4d9";
 
 export type ModeloDocumentoPadrao = {

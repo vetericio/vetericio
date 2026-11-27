@@ -29,7 +29,7 @@ export async function carregarLogoDocumento(url: string, removerFundoBranco = fa
   contexto.drawImage(imagem, 0, 0, canvas.width, canvas.height);
   if (!removerFundoBranco) return canvas.toDataURL("image/png");
 
-  // Só nos temas premium. Remove o branco conectado às bordas do arquivo;
+  // Remove apenas o branco conectado às bordas do arquivo;
   // brancos internos ao símbolo e áreas coloridas não são apagados.
   // O arquivo original da clínica jamais é modificado.
   try {

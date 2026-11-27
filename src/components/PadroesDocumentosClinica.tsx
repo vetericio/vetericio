@@ -7,7 +7,7 @@ import {
 } from "@/lib/configuracoes-clinica.functions";
 import { tokenConfiguracoesClinica } from "@/lib/configuracoes-clinica-ui";
 import {
-  COR_QUADROS_PADRAO, DOCUMENTOS, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO, limparOrientacoesPadraoReceita, obterTemaDocumentoPremium, preencherTextoDocumento,
+  COR_QUADROS_PADRAO, DOCUMENTOS, FUNDOS_DOCUMENTOS, TIPOS_MODELO_DOCUMENTO, desenharFundoTemaPremiumCanvas, limparOrientacoesPadraoReceita, obterTemaDocumentoPremium, preencherTextoDocumento,
   urlFundoDocumento, valoresModeloDocumento, type TipoModeloDocumento, type IdentidadeDocumento, type ModeloDocumentoPadrao,
 } from "@/lib/modelos-documentos";
 
@@ -72,7 +72,7 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
     }
     void import("@/lib/modelos-documentos-pdf")
       .then(({ prepararLogoDocumento }) => prepararLogoDocumento(
-        dados.identidade, true, Boolean(obterTemaDocumentoPremium(modeloSelecionado.fundo)),
+        dados.identidade, true, tipo === "orcamento" || Boolean(obterTemaDocumentoPremium(modeloSelecionado.fundo)),
       ))
       .then(logo => { if (ativo) setLogoDocumentoPreview(logo); })
       .catch(() => { if (ativo) setLogoDocumentoPreview(""); });
@@ -176,10 +176,10 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
               const logoMiniatura = logoDocumentoPreview;
               return (
                 <button type="button" key={id} aria-pressed={modelo.fundo === id}
-                  onClick={() => atualizar({ fundo: id, ...(tema ? { corQuadros: tema.acento } : {}) })}
+                  onClick={() => atualizar({ fundo: id })}
                   className={`rounded-lg border p-2 text-left text-xs ${modelo.fundo === id ? "border-primary bg-primary/10 ring-1 ring-primary" : "hover:bg-muted"}`}>
                   <div className="aspect-[210/297] overflow-hidden rounded border bg-white">
-                    {tema ? <div className="relative flex h-full flex-col overflow-hidden p-2" style={{ backgroundColor: tema.papel, color: tema.texto }}>
+                    {tema && tipo === "orcamento" ? <MiniaturaFundoPremium tema={tema} /> : tema ? <div className="relative flex h-full flex-col overflow-hidden p-2" style={{ backgroundColor: tema.papel, color: tema.texto }}>
                       <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: tema.acento }} />
                       <div className={`flex min-h-8 items-center gap-1 ${centralizado ? "flex-col justify-center" : ""} ${id === "15" ? "rounded-sm px-1 py-1" : ""}`}
                         style={id === "15" ? { backgroundColor: tema.acento, color: "#ffffff" } : undefined}>
@@ -254,18 +254,43 @@ export function PadroesDocumentosClinica({ clinicaId }: { clinicaId: string }) {
   </section>;
 }
 
+function MiniaturaFundoPremium({ tema }: { tema: NonNullable<ReturnType<typeof obterTemaDocumentoPremium>> }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext("2d");
+    if (canvas && ctx) desenharFundoTemaPremiumCanvas(ctx, tema.id, canvas.width, canvas.height);
+  }, [tema.id]);
+  return <canvas ref={ref} width={1240} height={1754} aria-hidden="true" className="h-full w-full object-cover" />;
+}
+
 function PreviaOrcamento({ identidade, modelo, logo }: { identidade: IdentidadeDocumento; modelo: ModeloDocumentoPadrao; logo: string }) {
   const tema = obterTemaDocumentoPremium(modelo.fundo);
-  const fundoUrl = tema ? "" : urlFundoDocumento(modelo.fundo, true);
-  const acento = tema?.acento || "#692b40";
-  const quadro = tema?.quadro || modelo.corQuadros;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [fundoPremium, setFundoPremium] = useState("");
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!tema || !canvas || !ctx) {
+      setFundoPremium("");
+      return;
+    }
+    desenharFundoTemaPremiumCanvas(ctx, tema.id, canvas.width, canvas.height);
+    setFundoPremium(canvas.toDataURL("image/png"));
+  }, [tema?.id]);
+  // A prévia do orçamento precisa usar o arquivo de impressão em resolução A4;
+  // a miniatura WebP é apenas para os cartões de seleção.
+  const fundoUrl = tema ? fundoPremium : urlFundoDocumento(modelo.fundo);
+  const acento = "#692b40";
+  const quadro = modelo.corQuadros || "#a6c4d9";
   return <section className="border-t pt-4" aria-label="Prévia do orçamento">
     <h3 className="mb-3 text-sm font-semibold">Prévia do orçamento</h3>
+    <canvas ref={canvasRef} width={1240} height={1754} aria-hidden="true" className="hidden" />
     <div className="mx-auto aspect-[210/297] w-full max-w-lg overflow-hidden rounded-lg border bg-white p-[6%] shadow-sm" style={{
-      backgroundColor: tema?.papel || "#ffffff", color: tema?.texto || "#222222",
+      backgroundColor: tema?.papel || "#ffffff", color: "#222222",
       ...(fundoUrl ? { backgroundImage: `url("${fundoUrl}")`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : {}),
     }}>
-      <div className="h-1.5 w-full" style={{ backgroundColor: acento }} />
+      {!modelo.fundo && <div className="h-1.5 w-full" style={{ backgroundColor: acento }} />}
       <header className="flex items-center gap-3 border-b py-4">
         {logo && <img src={logo} alt="Logo da clínica" className="h-12 max-w-20 object-contain" />}
         <div className="min-w-0">
