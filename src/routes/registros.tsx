@@ -14,6 +14,7 @@ import { EvolucaoAnimais } from "@/components/EvolucaoAnimais";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { alteracoesDoRegistro } from "@/lib/ficha";
 import { useRegistros } from "@/hooks/useRegistros";
+import { usePermissoes } from "@/hooks/usePermissoes";
 import { useFinalizarPlantao } from "@/hooks/useFinalizarPlantao";
 import {
   aplicarAtualizacao,
@@ -69,6 +70,8 @@ function Registros() {
   const demoAlvorada = useDemoAlvorada();
   const { registros, setRegistros, carregado } = useRegistros();
   const finalizar = useFinalizarPlantao();
+  const { pode, carregando: conferindoAcesso } = usePermissoes();
+  const podeFinalizarPlantao = !conferindoAcesso && pode("internacao.plantoes") && pode("internacao.registrar");
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
   const [letraAtiva, setLetraAtiva] = useState<string | null>(null);
@@ -168,13 +171,14 @@ function Registros() {
   };
 
   const finalizarPlantao = () => {
+    if (!podeFinalizarPlantao) return;
     if (registros.length === 0) {
       toast.info("Não há animais para finalizar o plantão.");
       return;
     }
     confirmacao.pedir({
       titulo: "Finalizar o plantão agora?",
-      descricao: `${registros.length} animal(is) vão para o histórico de plantões. Nada é apagado.`,
+      descricao: `O retrato das ${registros.length} fichas vai para Plantões, mas elas saem da lista ativa. Os alarmes atuais serão encerrados e o bloco de notas será limpo. Confira a passagem dos animais que continuam internados antes de prosseguir.`,
       acao: "Finalizar plantão",
       onConfirmar: finalizar,
     });
@@ -316,6 +320,7 @@ function Registros() {
           <button
             type="button"
             onClick={finalizarPlantao}
+            disabled={!podeFinalizarPlantao}
             className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-secondary/70"
           >
             Finalizar plantão

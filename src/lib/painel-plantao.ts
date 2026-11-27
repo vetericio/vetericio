@@ -31,6 +31,7 @@ export type DosePlantao = {
   via: string;
   horario: string;
   confirmada: boolean;
+  historicoLegadoSemVinculo?: true;
 };
 export type PacientePlantao = { id: string; nome: string; baia: string };
 export type TurnoPainel = {
@@ -111,6 +112,16 @@ function horasDeIntervalo(duracao: string) {
 }
 
 const limpar = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 300) : "");
+function identidadeParaRevisao(m: Medicacao) {
+  return [limpar(m.nomeMenor), limpar(m.nome)]
+    .filter(Boolean)
+    .join(" ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/\s+/g, " ");
+}
+
 async function chaveEscala(partes: string[]) {
   const digest = await crypto.subtle.digest(
     "SHA-256",
@@ -136,12 +147,19 @@ export async function programarPlantao(registros: Registro[], turno: TurnoPainel
     const baia = limpar(r.baia);
     pacientes.push({ id, nome, baia });
     const criado = typeof r.criadoEm === "string" ? Date.parse(r.criadoEm) : NaN;
+    const aplicacoesRecentes = new Set<string>();
     const conhecidas = new Map<
       string,
       { assinatura: string[]; m: Medicacao; repeticoes: number }
     >();
     for (const m of Array.isArray(r.medicacoes) ? r.medicacoes : []) {
-      if (!m || typeof m !== "object" || m.aplicadoEm) continue;
+      if (!m || typeof m !== "object") continue;
+      if (m.aplicadoEm) {
+        const aplicada = Date.parse(m.aplicadoEm);
+        if (aplicada <= agora && aplicada >= agora - diaMs)
+          aplicacoesRecentes.add(identidadeParaRevisao(m));
+        continue;
+      }
       const horario = limpar(m.horarioInicial);
       if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(horario) || !limpar(m.nome)) {
         semProgramacao++;
@@ -240,6 +258,9 @@ export async function programarPlantao(registros: Registro[], turno: TurnoPainel
         doses.push({
           chave,
           confirmada,
+          ...(aplicacoesRecentes.has(identidadeParaRevisao(m))
+            ? { historicoLegadoSemVinculo: true as const }
+            : {}),
           registroId: id,
           paciente: nome,
           baia,

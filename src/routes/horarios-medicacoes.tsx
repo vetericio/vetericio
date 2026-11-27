@@ -58,6 +58,7 @@ function HorariosMedicacoes() {
   const [modo, setModo] = useState<"lista" | "grade">("lista");
   const [formulario, setFormulario] = useState<(Formulario & { turno: string }) | null>(null);
   const [nota, setNota] = useState("");
+  const [revisouHistorico, setRevisouHistorico] = useState(false);
   const [paciente, setPaciente] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erroRegistro, setErroRegistro] = useState("");
@@ -139,6 +140,7 @@ function HorariosMedicacoes() {
     setErroRegistro("");
     setMensagem("");
     setNota("");
+    setRevisouHistorico(false);
     setPaciente("");
     setFormulario({ ...novo, turno: painel.turno.chave });
   }
@@ -153,9 +155,21 @@ function HorariosMedicacoes() {
     const texto = nota.trim();
     if (!texto && (formulario.tipo !== "dose" || formulario.estado === "nao_realizada")) return;
     if (formulario.tipo === "ocorrencia" && !paciente) return;
+    if (
+      formulario.tipo === "dose" &&
+      formulario.dose.historicoLegadoSemVinculo &&
+      !revisouHistorico
+    )
+      return;
     const evento =
       formulario.tipo === "dose"
-        ? { tipo: "dose" as const, chave: formulario.dose.chave, estado: formulario.estado, texto }
+        ? {
+            tipo: "dose" as const,
+            chave: formulario.dose.chave,
+            estado: formulario.estado,
+            texto,
+            revisouHistorico,
+          }
         : formulario.tipo === "ocorrencia"
           ? { tipo: "ocorrencia" as const, chave: formulario.chave, registroId: paciente, texto }
           : { tipo: "passagem" as const, chave: formulario.chave, texto };
@@ -213,6 +227,11 @@ function HorariosMedicacoes() {
             {compacto ? `${horarioCivilPlantao(d.horario).horario} · ` : ""}
             {d.medicamento}
           </p>
+          {!evento && d.historicoLegadoSemVinculo && (
+            <p className="mt-1 rounded-md border border-amber-300 bg-amber-50 p-1 text-xs font-semibold text-amber-950">
+              Há aplicação anterior sem vínculo. Confira a ficha antes de registrar.
+            </p>
+          )}
           <p className="break-words text-xs text-muted-foreground">
             {[d.dose, d.quantidade, d.via].filter(Boolean).join(" · ")}
           </p>
@@ -510,6 +529,21 @@ function HorariosMedicacoes() {
                   {momento(formulario.dose.horario)}
                 </p>
               )}
+              {formulario.tipo === "dose" && formulario.dose.historicoLegadoSemVinculo && (
+                <div className="rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950">
+                  Há aplicação anterior do mesmo item na ficha e o sistema não sabe se ela
+                  corresponde a este horário.
+                  <label className="mt-2 flex items-center gap-2 font-semibold">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={revisouHistorico}
+                      onChange={(e) => setRevisouHistorico(e.target.checked)}
+                    />
+                    Conferi a ficha e o que ocorreu neste horário.
+                  </label>
+                </div>
+              )}
               {formulario.tipo === "ocorrencia" && (
                 <div>
                   <label
@@ -569,6 +603,9 @@ function HorariosMedicacoes() {
                   disabled={
                     salvando ||
                     !!erro ||
+                    (formulario.tipo === "dose" &&
+                      formulario.dose.historicoLegadoSemVinculo &&
+                      !revisouHistorico) ||
                     (obrigatoria && !nota.trim()) ||
                     (formulario.tipo === "ocorrencia" && !paciente)
                   }

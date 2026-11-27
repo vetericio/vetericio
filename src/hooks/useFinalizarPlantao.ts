@@ -1,6 +1,7 @@
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { usePermissoes } from "./usePermissoes";
 import { useRegistros } from "./useRegistros";
 import { usePlantoes } from "./usePlantoes";
 import { usePlantaoAtual } from "./usePlantaoAtual";
@@ -20,8 +21,10 @@ export function useFinalizarPlantao() {
   const { curvas, setCurvas } = useCurvas();
   const { anamneses, setAnamneses } = useAnamneses();
   const navigate = useNavigate();
+  const { pode, carregando: conferindoAcesso } = usePermissoes();
 
   return () => {
+    if (conferindoAcesso || !pode("internacao.plantoes") || !pode("internacao.registrar")) return;
     if (registros.length > 0) {
       const novo: Plantao = {
         id: crypto.randomUUID(),
