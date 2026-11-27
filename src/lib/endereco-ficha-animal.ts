@@ -30,3 +30,31 @@ export function caminhoInternoDaFicha(pathname: string) {
   const resultado = /^\/([^/]+)\/animal\/?$/.exec(pathname);
   return resultado && ehEnderecoFichaAnimal(resultado[1], "animal") ? "/animal" : pathname;
 }
+
+/** Um link direto só é elegível para o mesmo escopo que carregou o resultado. */
+export function slugParaLinkDaFicha({
+  hostname,
+  animalId,
+  clinicaDaLista,
+  clinicaAtiva,
+  slugAtivo,
+  podeAbrirFicha,
+}: {
+  hostname: string;
+  animalId: unknown;
+  clinicaDaLista: string;
+  clinicaAtiva: string;
+  slugAtivo: unknown;
+  podeAbrirFicha: boolean;
+}) {
+  if (
+    !podeAbrirFicha ||
+    !clinicaDaLista ||
+    clinicaDaLista !== clinicaAtiva ||
+    !idAnimalDaFicha(animalId) ||
+    !mostrarEnderecoDaFichaNoHost(hostname)
+  ) {
+    return null;
+  }
+  return slugEnderecoFichaAnimal(slugAtivo);
+}
