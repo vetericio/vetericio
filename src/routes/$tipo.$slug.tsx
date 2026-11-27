@@ -1,11 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
+import { ehEnderecoFichaAnimal } from "@/lib/endereco-ficha-animal";
 import { ArrowRight, Building2 } from "lucide-react";
 import { RedirecionarPortalLegado } from "./pet/$slug/portal";
 
 export const Route = createFileRoute("/$tipo/$slug")({ component: PortalParceiro });
 
+const FichaAnimalPorClinica = lazy(() =>
+  import("./animal").then((modulo) => ({ default: modulo.FichaAnimalPorClinica })),
+);
+
 function PortalParceiro() {
   const { tipo, slug } = Route.useParams();
+  if (ehEnderecoFichaAnimal(tipo, slug)) {
+    return (
+      <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Carregando ficha…</p>}>
+        <FichaAnimalPorClinica key={tipo} slugClinica={tipo} />
+      </Suspense>
+    );
+  }
   const segmentoValido = tipo === "vet" || tipo === "pet";
   const titulo = "Portal veterinário";
 
