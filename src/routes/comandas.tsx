@@ -2,6 +2,7 @@ import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_COBRANCA } from "@/lib/demo-alvorada";
 import { oricseStorage } from "@/lib/oricse-storage";
 import { ComandaAtendimento } from "@/components/ComandaAtendimento";
+import { OrcamentosPortal } from "@/components/PortalOrcamentos";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -97,7 +98,7 @@ export function Comandas() {
   const demoAlvorada = useDemoAlvorada();
   const [comandasCanonicas, setComandasCanonicas] = useState<Comanda[]>([]);
   const [comandas, setComandas] = useState<Comanda[]>(lerComandas);
-  const { clinicaId, carregando: carregandoPermissoes } = usePermissoes();
+  const { clinicaId, carregando: carregandoPermissoes, pode } = usePermissoes();
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [carregandoCadastros, setCarregandoCadastros] = useState(true);
   const [erroCadastros, setErroCadastros] = useState("");
@@ -270,17 +271,20 @@ export function Comandas() {
   const carregarCanonicas = useCallback(async () => {
     if (!clinicaId) { setComandasCanonicas([]); return; }
     const { data, error } = await supabaseBanco.from("oricse_portal_comandas")
-      .select("id,numero,status,tutor_id,animal_id,aberta_em,finalizada_em,itens,pagamentos,atendimento_registro_id")
-      .eq("clinica_id",clinicaId).not("atendimento_registro_id","is",null)
-      .order("aberta_em",{ascending:false}).limit(500);
+      .select("id,numero,status,tutor_id,animal_id,aberta_em,finalizada_em,itens,pagamentos,atendimento_registro_id,orcamento_portal_id")
+      .eq("clinica_id",clinicaId).or("atendimento_registro_id.not.is.null,orcamento_portal_id.not.is.null")
+      .order("aberta_em",{ascending:false}).limit(500)
+      .overrideTypes<{id:string;numero:number;status:string;tutor_id:string;animal_id:string;aberta_em:string;finalizada_em:string|null;
+        itens:Comanda["itens"];pagamentos:Comanda["pagamentos"];atendimento_registro_id:string|null;orcamento_portal_id:string|null}[], { merge: false }>();
     if (error) { console.error("Falha ao consultar comandas do atendimento:",error); return; }
     setComandasCanonicas((data || []).map(c => ({
-      id:c.id,numero:c.numero,status:c.status==="Finalizada"?"Finalizada":"Aberta",origem:"Consultório",
+      id:c.id,numero:c.numero,status:c.status==="Finalizada"?"Finalizada":"Aberta",origem:c.orcamento_portal_id?"Orçamento do Portal":"Consultório",
       tutorId:c.tutor_id,tutorNome:tutores.find(t=>t.id===c.tutor_id)?.nome || "Tutor",
       animalId:c.animal_id,animalNome:animais.find(a=>a.id===c.animal_id)?.nome || "Animal",
       abertaEm:c.aberta_em,finalizadaEm:c.finalizada_em||undefined,abertaPor:"Equipe clínica",abertaPorId:"",
       itens:c.itens as unknown as Comanda["itens"],pagamentos:c.pagamentos as unknown as Comanda["pagamentos"],
       atendimentoRegistroId:c.atendimento_registro_id||undefined,
+      orcamentoPortalId:c.orcamento_portal_id||undefined,
     })));
   },[clinicaId,tutores,animais]);
   useEffect(()=>{
@@ -674,6 +678,15 @@ export function Comandas() {
         </div>
       </header>
 
+      {clinicaId && pode("caixa.comandas") && !demoAlvorada && <div className="mt-6">
+        <OrcamentosPortal key={clinicaId} clinicaId={clinicaId} abrirComanda={(id) => {
+          void carregarCanonicas().then(() => {
+            setMostrarHistorico(false);
+            setComandaSelecionadaId(id);
+            requestAnimationFrame(() => document.getElementById("comanda-canonica-detalhes")?.scrollIntoView({ block: "start" }));
+          });
+        }} />
+      </div>}
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(280px,.82fr)_minmax(0,1.5fr)]">
         <section className="h-fit rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
           <div className="mb-4 flex items-center gap-2">
@@ -784,10 +797,14 @@ export function Comandas() {
             </div>
           </div>
 
-          {comandaSelecionada?.atendimentoRegistroId && clinicaId ? (
-            <div className="min-w-0">
+          {(comandaSelecionada?.atendimentoRegistroId || comandaSelecionada?.orcamentoPortalId) && clinicaId ? (
+            <div className="min-w-0" id="comanda-canonica-detalhes">
               <button type="button" className="text-sm font-bold text-primary" onClick={()=>setComandaSelecionadaId(null)}>Voltar à lista</button>
-              <ComandaAtendimento key={comandaSelecionada.id} id={comandaSelecionada.id} clinicaId={clinicaId} />
+              <ComandaAtendimento key={comandaSelecionada.id} id={comandaSelecionada.id} clinicaId={clinicaId}
+                orcamento={Boolean(comandaSelecionada.orcamentoPortalId)} />
+              {comandaSelecionada.orcamentoPortalId && <ul aria-label="Itens do orçamento aprovado" className="mb-4 list-disc space-y-1 pl-5 text-sm">
+                {comandaSelecionada.itens.map(i => <li key={i.id}>{i.quantidade} × {i.descricao} · {dinheiro(i.valorUnitario)} por unidade</li>)}
+              </ul>}
               <a className="text-sm font-semibold text-primary underline" href={`/animal?animalId=${comandaSelecionada.animalId}&comandaId=${comandaSelecionada.id}`}>Abrir ficha e documentos de {comandaSelecionada.animalNome}</a>
             </div>
           ) : comandaSelecionada ? (

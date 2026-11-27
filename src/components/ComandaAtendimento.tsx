@@ -19,7 +19,15 @@ const formas = [
   "Outro",
 ];
 
-export function ComandaAtendimento({ id, clinicaId }: { id: string; clinicaId: string }) {
+export function ComandaAtendimento({
+  id,
+  clinicaId,
+  orcamento = false,
+}: {
+  id: string;
+  clinicaId: string;
+  orcamento?: boolean;
+}) {
   const demoAlvorada = useDemoAlvorada();
   const { pode } = usePermissoes();
   const [comanda, setComanda] = useState<{
@@ -102,7 +110,8 @@ export function ComandaAtendimento({ id, clinicaId }: { id: string; clinicaId: s
   return (
     <section className="my-4 space-y-3 rounded-xl border bg-card p-4">
       <h2 className="flex items-center gap-2 font-bold">
-        <ReceiptText size={17} /> Comanda do atendimento
+        <ReceiptText size={17} />{" "}
+        {orcamento ? "Comanda do orçamento aprovado" : "Comanda do atendimento"}
         {comanda ? ` #${String(comanda.numero).padStart(5, "0")}` : ""}
       </h2>
       {erro && (

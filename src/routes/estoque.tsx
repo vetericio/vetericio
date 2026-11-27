@@ -1,3 +1,4 @@
+import { ExtratoComissao } from "@/components/ExtratoComissao";
 import { oricseStorage, oricseSession } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { ArrowDown, ArrowLeft, ArrowUp, PackagePlus, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
@@ -5,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { LeitorCodigoBarrasCamera } from "@/components/LeitorCodigoBarrasCamera";
+import { InventarioEstoque } from "@/components/InventarioEstoque";
 
 import {
   DIAS_SEMANA,
@@ -218,7 +220,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
     if (area === "estoque" && aba === "historico" && clinicaId && podeVerCatalogo) void carregarHistorico(clinicaId);
   }, [area, aba, clinicaId, podeVerCatalogo, podeVerCaixa]);
 
-  async function carregarDados(clinica: string) {
+  async function carregarDados(clinica: string, aindaAtivo: () => boolean = () => true) {
     // Fonte canônica do catálogo: a mesma do PDV e do caixa operacional.
     // O Drive continua atendendo os demais módulos legados, sem uma cadeia
     // de leituras adicionais para cadastrar ou movimentar produtos.
@@ -226,6 +228,7 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
       .from("oricse_catalogo_itens").select("*")
       .eq("clinica_id",clinica).order("nome").order("id");
     if (erroItens) throw erroItens;
+    if (!aindaAtivo()) return;
     setItens((itensResult || []) as ItemCatalogo[]);
     if (area !== "rh") return;
 
@@ -535,6 +538,14 @@ export function Estoque({ area = "estoque", abaInicial }: {area?: "estoque" | "r
             </div>
             <span className="rounded-full border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">{produtos.length} produtos</span>
           </div>
+          {clinicaId && (
+            <InventarioEstoque
+              key={clinicaId}
+              clinicaId={clinicaId}
+              podeContar={podeMovimentarEstoque}
+              aoContar={(aindaAtivo) => carregarDados(clinicaId, aindaAtivo)}
+            />
+          )}
           <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
             <label className="flex min-w-[190px] flex-1 flex-col gap-1 text-xs font-semibold">Ordenar por
               <select value={ordenacaoEstoque} onChange={e => setOrdenacaoEstoque(e.target.value as typeof ordenacaoEstoque)} className="h-10 rounded-lg border bg-background px-3 text-sm font-normal">
@@ -1074,8 +1085,8 @@ type PagamentoLancamento = {
   catalogo_item_id: string | null; hora_inicio: string | null; hora_fim: string | null;
 };
 function mesAtualPagamento() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  const partes = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).formatToParts();
+  return `${partes.find(p => p.type === "year")?.value}-${partes.find(p => p.type === "month")?.value}`;
 }
 function PagamentoEquipe({ clinicaId, profissionais, itens, podeGerenciar }: {clinicaId: string; profissionais: ProfissionalClinica[]; itens: ItemCatalogo[]; podeGerenciar: boolean}) {
   const [mes, setMes] = useState(mesAtualPagamento);
@@ -1128,7 +1139,7 @@ function PagamentoEquipe({ clinicaId, profissionais, itens, podeGerenciar }: {cl
     return () => { ativo=false; };
   },[clinicaId,mes]);
 
-  const selecionados = lancamentos.filter(l=>l.funcionario_id===funcionario);
+  const selecionados = lancamentos.filter(l=>l.clinica_id===clinicaId && l.funcionario_id===funcionario && l.data.startsWith(mes+"-"));
   const soma = (t: PagamentoLancamento["tipo"]) => selecionados.filter(l=>l.tipo===t).reduce((a,l)=>a+Number(l.valor),0);
   const registrosJornada = jornadas.filter(j=>j.funcionario_id===funcionario);
   const horasTrabalhadas = registrosJornada.filter(j=>j.modalidade==="hora").reduce((acc,j)=>acc+Number(j.segundos_trabalhados||0)+(j.estado==="ativa"&&j.ultimo_inicio_em?Math.max(0,(Date.now()-new Date(j.ultimo_inicio_em).getTime())/1000):0),0)/3600;
@@ -1188,7 +1199,7 @@ function PagamentoEquipe({ clinicaId, profissionais, itens, podeGerenciar }: {cl
   return <section className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div><h2 className="text-xl font-bold">Jornada e pagamentos da equipe</h2><p className="text-sm text-muted-foreground">{podeGerenciar ? "Visualização e gestão liberadas para este usuário." : "Acesso somente para visualização."}</p></div>
-      <label className="text-xs font-semibold">Competência<input type="month" value={mes} max={mesAtualPagamento()} onChange={e=>setMes(e.target.value)} className="mt-1 block h-10 rounded-lg border bg-background px-3 text-sm" /></label>
+      <label className="text-xs font-semibold">Competência<input type="month" value={mes} max={mesAtualPagamento()} onChange={e=>{ if (/^\d{4}-\d{2}$/.test(e.target.value)) setMes(e.target.value); }} className="mt-1 block h-10 rounded-lg border bg-background px-3 text-sm" /></label>
     </div>
     <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
       <label className="min-w-[220px] flex-1 text-xs font-semibold">Veterinário
@@ -1201,6 +1212,7 @@ function PagamentoEquipe({ clinicaId, profissionais, itens, podeGerenciar }: {cl
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {([["Plantões",plantao],["Comissões",comissao],["Débitos",-debito],["Total a pagar",plantao+comissao-debito]] as const).map(([titulo,v])=> <div key={titulo} className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">{titulo}</p><p className="mt-2 text-xl font-bold tabular-nums">{moeda(v)}</p></div>)}
       </div>
+      <ExtratoComissao key={`${clinicaId}:${funcionario}:${mes}`} clinicaId={clinicaId} funcionarioId={funcionario} mes={mes} podeFechar={podeGerenciar} mesEncerrado={fechado} carregando={carregando} linhas={selecionados.filter(l=>l.tipo==="comissao").map(l=>({id:l.id,data:l.data,descricao:l.descricao,centavos:Math.round(Number(l.valor)*100)}))}/>
       <div className="rounded-xl border bg-card p-4 space-y-3">
         <h3 className="font-bold">Regra de jornada · {funcionarioAtual.nome}</h3>
         {podeGerenciar ? <div className="flex flex-wrap items-end gap-3">

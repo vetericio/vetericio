@@ -1,3 +1,5 @@
+import { PainelExamesLaboratoriais } from "@/components/animal/PainelExamesLaboratoriais";
+import { usePermissoes } from "@/hooks/usePermissoes";
 // Revisão clínica: cadastro, prontuário e exame oftalmológico vinculados ao atendimento.
 import { descarregarOricseStorage, oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -118,6 +120,7 @@ function resumoMedicacoes(lista: Medicacao[]) {
 function formConsultaVazio():ConsultaForm { return { acessoRua:"", contatoAnimais:"", ambiente:"", moradia:"", ventilacao:"", apetite:"", exposicoes:[], vacinacao:"", vermifugacao:"", dieta:"", doencasPrevias:"", medicamentosRecentes:"", alergias:"", queixa:"", sistemas:Object.fromEntries(Object.keys(SISTEMAS).map(s=>[s,{sinais:[],observacoes:""}])), oftalmo:oftalmoVazio(), peso:"", temperatura:"", fc:"", fr:"", pas:"", glicemia:"", mucosas:"", hidratacao:"", dor:"", exameGeral:"", suspeitas:"", examesSolicitados:"", medicacoes:"", medicacoesDetalhadas:[], conduta:"", retorno:"", retornoEm:"" }; }
 
 function RegistroClinico(){
+  const {pode,adminGlobal}=usePermissoes();
   const navigate=useNavigate();
   const params=new URLSearchParams(typeof window!=="undefined"?window.location.search:"");
   const animalId=params.get("animalId")||"";
@@ -132,6 +135,8 @@ function RegistroClinico(){
   const [clinicaAnimalId,setClinicaAnimalId]=useState("");
   const [modo,setModo]=useState<""|"consulta"|"procedimento">(()=>{ const tipo=params.get("tipo"); return tipo==="consulta"||tipo==="procedimento"?tipo:""; });
   const [etapa,setEtapa]=useState(1);
+  const [examesAtivados,setExamesAtivados]=useState(false);
+  useEffect(()=>{if(etapa===6)setExamesAtivados(true);},[etapa]);
   const [receitaEmitida,setReceitaEmitida]=useState(false);
   const [receituarioAtivado,setReceituarioAtivado]=useState(false);
   const [consulta,setConsulta]=useState<ConsultaForm>(()=>formConsultaVazio());
@@ -573,6 +578,11 @@ function RegistroClinico(){
               </div>)}</div>
               <div className="mt-4"><Textarea label="Outros exames / observações" value={consulta.examesSolicitados} onChange={v=>setConsulta({...consulta,examesSolicitados:v})} placeholder="Você também pode complementar manualmente o pedido..."/></div>
             </section>}
+            {(etapa === 6 || examesAtivados) && clinicaAnimalId && (adminGlobal || pode("consultorio.atendimentos")) &&
+              <div className={etapa === 6 ? "mt-4" : "hidden"}>
+                <PainelExamesLaboratoriais key={clinicaAnimalId + ":" + animal.id} clinicaId={clinicaAnimalId} animalId={animal.id}
+                  modoConsulta podeConfigurar={adminGlobal || pode("administracao.configuracoes")} />
+              </div>}
             {(etapa===7||receituarioAtivado)&&<section className={etapa===7?"min-w-0 space-y-4":"hidden"}>
               <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
                 <h3 className="font-black">Receituário do paciente</h3>

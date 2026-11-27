@@ -1,3 +1,4 @@
+import { PainelExamesLaboratoriais } from "@/components/animal/PainelExamesLaboratoriais";
 import { permissoesDaRota, usePermissoes } from "@/hooks/usePermissoes";
 import { useDemoAlvorada } from "@/lib/demo-alvorada-context";
 import { AVISO_DEMO_DOCUMENTOS } from "@/lib/demo-alvorada";
@@ -364,6 +365,7 @@ export function FichaAnimalPorClinica({ slugClinica }: { slugClinica: string }) 
 }
 
 function AnimalFicha({ clinicaConfirmada }: { clinicaConfirmada?: string }) {
+  const { pode, adminGlobal } = usePermissoes();
   const demoAlvorada = useDemoAlvorada();
   const busca = useSearch({ strict: false }) as { animalId?: unknown; comandaId?: unknown };
   const animalId = typeof busca.animalId === "string" ? busca.animalId : "";
@@ -1355,6 +1357,10 @@ function AnimalFicha({ clinicaConfirmada }: { clinicaConfirmada?: string }) {
             />
           ) : (
             <>
+            {aba === "Exames" && clinicaId && (adminGlobal || pode("consultorio.atendimentos")) && (
+              <PainelExamesLaboratoriais key={clinicaId + ":" + animal.id} clinicaId={clinicaId} animalId={animal.id}
+                podeConfigurar={adminGlobal || pode("administracao.configuracoes")} />
+            )}
             {aba === "Termos" && <TermosDoPaciente
               animalId={animal.id}
               tutorId={animal.tutorId}

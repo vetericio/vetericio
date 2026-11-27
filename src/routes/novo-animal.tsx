@@ -133,7 +133,7 @@ function NovoAnimal() {
 }
 
 export function CadastroAnimal({ dentroDaBusca }: {
-  dentroDaBusca?: { tutorId: string; clinicaId: string; onSalvar: () => void; onCancelar: () => void };
+  dentroDaBusca?: { tutorId: string; clinicaId: string; onSalvar: (id?: string) => void; onCancelar: () => void };
 } = {}) {
   const navigate = useNavigate();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
@@ -203,10 +203,10 @@ export function CadastroAnimal({ dentroDaBusca }: {
     if (homonimos.length && !window.confirm("Este tutor já possui um animal com o mesmo nome. Deseja continuar?")) return;
     const microchip = (form.microchip || "").trim();
     if (microchip && (animaisDoTutor || []).some((item: any) => item.id !== animalId && String(item.dados?.microchip || "").trim() === microchip)) return toast.error("Este microchip já está cadastrado para outro animal deste tutor.");
-    const {error}=await (supabaseBanco as any).rpc("oricse_animal_salvar_tela",{p_clinica:clinicaId,p_tutor:tutor.id,p_animal:animalId||null,p_dados:form});
+    const {data: idSalvo,error}=await (supabaseBanco as any).rpc("oricse_animal_salvar_tela",{p_clinica:clinicaId,p_tutor:tutor.id,p_animal:animalId||null,p_dados:form});
     if(error)return toast.error(error.message);
     toast.success(editando?"Animal atualizado no Supabase.":"Animal cadastrado no ORICSE.");
-    if (dentroDaBusca) dentroDaBusca.onSalvar();
+    if (dentroDaBusca) dentroDaBusca.onSalvar(typeof idSalvo === "string" ? idSalvo : undefined);
     else navigate({to:"/tutores"});
     } catch (error) {
       console.error("Não foi possível salvar o animal:", error);

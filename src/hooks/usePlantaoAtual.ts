@@ -23,7 +23,10 @@ const getServerSnapshot = () => null;
 
 
 function definir(turno: Turno | null, dia?: string) {
-  estado = turno ? { dia: dia || diaDeHoje(), turno, escolhidoEm: diaDeHoje() } : null;
+  estado = turno ? {
+    id: crypto.randomUUID(), iniciadoEm: new Date().toISOString(),
+    dia: dia || diaDeHoje(), turno, escolhidoEm: diaDeHoje(),
+  } : null;
   salvarPlantaoAtual(estado);
   if (turno === "noturno") ativarJejumNoturno();
   ouvintes.forEach((fn) => fn());

@@ -1,3 +1,6 @@
+import { PainelExamesLaboratoriais } from "@/components/animal/PainelExamesLaboratoriais";
+import { usePermissoes } from "@/hooks/usePermissoes";
+import { ehRegistroConsulta } from "@/lib/resumo-consulta";
 // Prontuário estruturado com versão original preservada e adendos.
 import { descarregarOricseStorage, oricseStorage } from "@/lib/oricse-storage";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
@@ -92,6 +95,8 @@ function camposPreenchidos(detalhe?: string): CampoPreenchido[] {
 
 function ConsultaSalva() {
   const busca = useSearch({ strict: false }) as { registroId?: unknown; animalId?: unknown };
+  const { pode, adminGlobal } = usePermissoes();
+  const [contextoLab, setContextoLab] = useState<{ clinicaId: string; consultaCanonica: boolean } | null>(null);
   const registroId = typeof busca.registroId === "string" ? busca.registroId : "";
   const animalIdParam = typeof busca.animalId === "string" ? busca.animalId : "";
   const [registro, setRegistro] = useState<Registro | null>(null);
@@ -108,6 +113,7 @@ function ConsultaSalva() {
     setCarregando(true);
     setErro("");
     setRegistro(null);
+    setContextoLab(null);
     setAnimal(null);
     setTutor(null);
     async function carregar() {
@@ -156,6 +162,7 @@ function ConsultaSalva() {
         });
         setTutor(ficha.data.tutor || null);
         setRegistrosRelacionados(relacionado);
+        setContextoLab({ clinicaId, consultaCanonica: Boolean(encontradoBanco) });
         setRegistro(encontrado);
       } catch (error) {
         if (ativo) setErro(error instanceof Error ? error.message : "Não foi possível abrir esta consulta.");
@@ -278,6 +285,13 @@ function ConsultaSalva() {
         )}
       </div>
     </article>
+    {contextoLab && ehRegistroConsulta(registro) && (adminGlobal || pode("consultorio.atendimentos")) &&
+      <div className="mt-4">
+        <PainelExamesLaboratoriais key={contextoLab.clinicaId + ":" + animal.id + ":" + registro.id}
+          clinicaId={contextoLab.clinicaId} animalId={animal.id}
+          consultaId={contextoLab.consultaCanonica ? registro.id : undefined} modoConsulta
+          podeConfigurar={adminGlobal || pode("administracao.configuracoes")} />
+      </div>}
 
     <details className="group mt-4 overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
       <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary sm:px-8 [&::-webkit-details-marker]:hidden">

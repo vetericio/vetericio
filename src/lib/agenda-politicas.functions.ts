@@ -30,7 +30,7 @@ export const cancelarAgendamentoPolitica = createServerFn({ method: "POST" })
     const {data:vinculo}=await supabaseAdmin.from("clinica_usuarios").select("papel")
       .eq("user_id",uid).eq("clinica_id",data.clinicaId).eq("ativo",true).maybeSingle();
     const {data:agendamento,error:erroAgenda}=await(supabaseAdmin as any).from("oricse_agendamentos_online")
-      .select("id,clinica_id,inicio,estado,origem,observacoes").eq("id",data.agendamentoId).eq("clinica_id",data.clinicaId).maybeSingle();
+      .select("id,clinica_id,inicio,estado,origem,observacoes,dados,pagamento_confirmado_em,updated_at").eq("id",data.agendamentoId).eq("clinica_id",data.clinicaId).maybeSingle();
     if(erroAgenda||!agendamento)throw new Error("Agendamento não encontrado nesta clínica.");
     if(!["solicitado","confirmado","reservado"].includes(String(agendamento.estado))){
       throw new Error("Este agendamento não permite cancelamento.");
@@ -58,12 +58,20 @@ export const cancelarAgendamentoPolitica = createServerFn({ method: "POST" })
     }
     const observacao=String(agendamento.observacoes||"");
     const novaObservacao=(observacao+"\nCancelamento pela equipe: "+data.motivo).trim().slice(0,1500);
+    const dadosAgenda=agendamento.dados && typeof agendamento.dados==="object" && !Array.isArray(agendamento.dados)
+      ? agendamento.dados as Record<string,unknown> : {};
+    const requerEstorno=agendamento.origem==="portal_tutor" &&
+      (Boolean(agendamento.pagamento_confirmado_em) || (dadosAgenda.pagamento==="Pago" && typeof dadosAgenda.pagamento_portal_id==="string"));
     const {data:alterado,error:erroUpdate}=await(supabaseAdmin as any).from("oricse_agendamentos_online")
-      .update({estado:"cancelado",observacoes:novaObservacao})
+      .update({
+        estado:"cancelado",observacoes:novaObservacao,updated_at:new Date().toISOString(),
+        dados:{...dadosAgenda,status_clinico:"Cancelado",...(requerEstorno?{pagamento_requer_estorno:true}:{})},
+      })
       .eq("id",data.agendamentoId).eq("clinica_id",data.clinicaId).eq("estado",agendamento.estado)
+      .eq("inicio",agendamento.inicio).eq("updated_at",agendamento.updated_at)
       .select("id,estado").maybeSingle();
     if(erroUpdate||!alterado||alterado.estado!=="cancelado"){
       throw new Error("Não foi possível confirmar o cancelamento. Atualize a agenda e tente novamente.");
     }
-    return {ok:true,agendamentoId:alterado.id,aprovacaoGerencial:dentroDoPrazo&&gestao};
+    return {ok:true,agendamentoId:alterado.id,aprovacaoGerencial:dentroDoPrazo&&gestao,requerEstorno};
   });

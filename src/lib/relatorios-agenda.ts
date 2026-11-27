@@ -28,6 +28,7 @@ export type EventoAgendaRelatorio = {
   estado: string | null;
   tipo: string | null;
   status_clinico?: string | null;
+  reagendado_em?: string | null;
   pagamento_expira_em?: string | null;
   updated_at?: string | null;
 };
@@ -154,14 +155,15 @@ function desfecho(evento: EventoAgendaRelatorio) {
   const falta = ["falta", "faltou", "nao compareceu", "nao comparecimento"].some((s) =>
     estados.has(s),
   );
-  const reagendamento = ["reagendado", "remarcado"].some((s) => estados.has(s));
+  const encerradoParaReagendar = ["reagendado", "remarcado"].some((s) => estados.has(s));
+  const reagendamento = encerradoParaReagendar || Number.isFinite(emMs(evento.reagendado_em));
   const cancelado = estados.has("cancelado") && !falta;
-  return { estado, clinico, falta, cancelado, reagendamento };
+  return { estado, clinico, falta, cancelado, reagendamento, encerradoParaReagendar };
 }
 
 function eventoAtivo(evento: EventoAgendaRelatorio, agora: number) {
-  const { estado, cancelado, falta, reagendamento } = desfecho(evento);
-  if (cancelado || reagendamento || estado === "expirado") return false;
+  const { estado, cancelado, falta, encerradoParaReagendar } = desfecho(evento);
+  if (cancelado || encerradoParaReagendar || estado === "expirado") return false;
   const prazo = emMs(evento.pagamento_expira_em);
   if (estado === "aguardando pagamento") return prazo > agora;
   if (estado === "reservado" && Number.isFinite(prazo)) return prazo > agora;
@@ -429,7 +431,7 @@ export function relatorioDesfechosAgenda(
     ],
     notas: [
       "O período considera a data atualmente registrada para o horário, não a data em que ele foi cancelado ou alterado. Bloqueios e reservas expiradas não são cancelamentos clínicos.",
-      "A agenda não mantém o histórico completo de trocas de horário nem registra sistematicamente faltas. Contagens de faltas e reagendamentos mostram apenas registros explícitos; sem registro específico não significa zero.",
+      "Faltas e reagendamentos mostram apenas registros explícitos. Cada agendamento reagendado conta uma vez na sua data atual, mesmo que tenha mudado mais de uma vez. Registros antigos podem não ter histórico: sem registro específico não significa zero.",
     ],
     tabelas: [
       {

@@ -21,6 +21,8 @@ export type Medicacao = {
   aplicadoEm?: string;
   /** Horário local da primeira dose, usado na agenda de internação. */
   horarioInicial?: string;
+  /** Instante em que a programação da ficha foi preenchida ou confirmada. */
+  programadaEm?: string;
   /** Peso do animal no momento da ministração, ex.: "3,500 kg". */
   peso?: string;
   /** Observação livre digitada na confirmação da ministração. */

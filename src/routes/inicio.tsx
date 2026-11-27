@@ -303,6 +303,14 @@ function Inicio() {
           </p>
         </div>
 
+        {!carregando && (pode("internacao.registrar") || pode("crm.visualizar")) && (
+          <section aria-label="Ações pendentes" className="mt-5 flex flex-wrap items-center gap-2">
+            <h2 className="pr-2 text-sm font-semibold">Ações pendentes</h2>
+            {pode("internacao.registrar") && <Link to="/pendencias" className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-card px-3 text-sm font-semibold">Pendências clínicas <ArrowUpRight aria-hidden="true" size={14}/></Link>}
+            {pode("crm.visualizar") && <Link to="/crm" search={{ secao: "fila" }} className="inline-flex min-h-10 items-center gap-2 rounded-lg border bg-card px-3 text-sm font-semibold">Contatos pendentes <ArrowUpRight aria-hidden="true" size={14}/></Link>}
+          </section>
+        )}
+
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:mt-8">
           {areasVisiveis.map(({ to, permissao, numero, titulo, descricao, acao, Icone, iconeClass, detalhe }) => {
             const bloqueado = !carregando && bloqueadaPeloPlano(permissao);

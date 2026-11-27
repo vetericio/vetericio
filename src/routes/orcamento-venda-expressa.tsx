@@ -10,6 +10,7 @@ import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 import { salvarOrcamentoRelatorio } from "@/lib/orcamentos-relatorio.functions";
+import { rpcPortal } from "@/lib/portal-agenda-orcamentos";
 import { PrecoPorPesoOrcamento } from "@/components/PrecoPorPesoOrcamento";
 import { calcularPrecoOrcamento, type PerfilOrcamento } from "@/lib/preco-orcamento";
 import { faixasValidas, type FaixaPrecoPeso } from "@/lib/preco-por-peso";
@@ -32,6 +33,7 @@ function OrcamentoVendaExpressa() {
   const demoAlvorada = useDemoAlvorada();
   const { clinicaId, clinicaSlug, carregando: verificando, adminGlobal, pode } = usePermissoes();
   const autorizado = adminGlobal || pode("caixa.comandas") || pode("caixa.financeiro.gerenciar");
+  const podeCompartilharPortal = adminGlobal || pode("caixa.comandas");
   const acompanharOrcamentos = clinicaNoPilotoRelatorios(clinicaSlug);
   const [clinica, setClinica] = useState<Clinica>({});
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -67,11 +69,41 @@ function OrcamentoVendaExpressa() {
   const temPrecoPendente = itens.some(({ preco }) => preco && preco.valor === null);
   const orcamentoCompleto = catalogoPronto && itens.length > 0 && itens.every(item => item.subtotalCentavos !== null);
 
+  const [compartilhandoPortal, setCompartilhandoPortal] = useState(false);
+  const [compartilhadoPortal, setCompartilhadoPortal] = useState("");
+  const tentativaPortal = useRef<{ chave: string; id: string } | undefined>(undefined);
+  const emCursoPortal = useRef(false);
   const [registrando, setRegistrando] = useState(false);
   const [registro, setRegistro] = useState<{chave:string;id:string}>();
   const tentativa = useRef<{chave:string;id:string} | undefined>(undefined);
   const emCurso = useRef(false);
   const chave = JSON.stringify([clinicaId, linhas, nomeTutor, contatoTutor, observacoes, validade, total]);
+  const chavePortal = JSON.stringify([chave, tutorId, animalId]);
+  async function compartilharNoPortal() {
+    if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
+    if (!podeCompartilharPortal || !clinicaId || !tutorId || !animalId || !orcamentoCompleto ||
+        emCursoPortal.current || compartilhadoPortal === chavePortal) return;
+    if (!window.confirm("Compartilhar este orçamento com o tutor vinculado ao animal? Não será enviada mensagem nem feita cobrança.")) return;
+    emCursoPortal.current = true; setCompartilhandoPortal(true);
+    try {
+      if (tentativaPortal.current?.chave !== chavePortal) tentativaPortal.current = { chave: chavePortal, id: crypto.randomUUID() };
+      await rpcPortal<string>("oricse_portal_orcamento_compartilhar", {
+        p_clinica: clinicaId, p_id: tentativaPortal.current.id, p_tutor: tutorId, p_animal: animalId,
+        p_validade_dias: Math.max(1, Math.min(365, Math.floor(Number(validade) || 7))),
+        p_observacoes: observacoes.trim(), p_total_centavos: totalCentavos,
+        p_linhas: itens.map(({ linha, produto, preco, subtotalCentavos }) => ({
+          id: linha.id, produtoId: linha.produtoId, quantidade: linha.quantidade,
+          especie: linha.perfil.especie, sexo: linha.perfil.sexo,
+          valorCentavos: Math.round((preco?.valor ?? produto?.valor ?? 0) * 100), subtotalCentavos,
+          peso: linha.perfil.peso.trim().replace(",", ".").replace(/^\./, "0.").replace(/\.$/, ""),
+        })),
+      });
+      setCompartilhadoPortal(chavePortal);
+      toast.success("Orçamento disponível no Portal do Tutor. Nenhuma mensagem foi enviada.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível compartilhar o orçamento.");
+    } finally { emCursoPortal.current = false; setCompartilhandoPortal(false); }
+  }
   const codigoRegistrado = registro?.chave === chave ? registro.id : null;
   async function registrarOrcamento() {
     if (demoAlvorada) return void toast.info(AVISO_DEMO_DOCUMENTOS);
@@ -118,6 +150,8 @@ function OrcamentoVendaExpressa() {
     setContatoTutor("");
     setObservacoes("");
     setRegistro(undefined);
+    setCompartilhadoPortal("");
+    tentativaPortal.current = undefined;
     tentativa.current = undefined;
     if (!clinicaId || !autorizado) return;
     let ativo = true;
@@ -326,7 +360,7 @@ function OrcamentoVendaExpressa() {
     <header><h1 className="text-3xl font-bold">Orçamento</h1><p className="text-muted-foreground">Crie uma proposta profissional sem registrar venda nem alterar o estoque.</p></header>
     <section className="grid gap-4 rounded-2xl border bg-card p-5 sm:grid-cols-2">
       {tutores.length > 0 && <label className="text-sm font-semibold sm:col-span-2">Selecionar tutor cadastrado (opcional)
-        <select aria-label="Selecionar tutor cadastrado" className="mt-2 w-full rounded-xl border bg-background p-3" defaultValue="" onChange={e => {
+        <select aria-label="Selecionar tutor cadastrado" className="mt-2 w-full rounded-xl border bg-background p-3" value={tutorId} onChange={e => {
           const tutor = tutores.find(t => t.id === e.target.value);
           setTutorId(tutor?.id ?? "");
           setAnimalId("");
@@ -375,10 +409,14 @@ function OrcamentoVendaExpressa() {
       {acompanharOrcamentos && <button type="button" disabled={registrando || temPrecoPendente || !orcamentoCompleto || !!codigoRegistrado} onClick={()=>void registrarOrcamento()} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-60">
         {registrando ? "Registrando…" : codigoRegistrado ? "Orçamento registrado" : "Registrar para acompanhamento"}
       </button>}
+      {podeCompartilharPortal && !demoAlvorada && <button type="button" disabled={compartilhandoPortal || !tutorId || !animalId || !orcamentoCompleto || compartilhadoPortal===chavePortal} onClick={() => void compartilharNoPortal()} className="rounded-xl border px-4 py-3 font-semibold disabled:opacity-50">
+        {compartilhandoPortal ? "Compartilhando…" : compartilhadoPortal===chavePortal ? "Compartilhado no Portal" : "Compartilhar no Portal do Tutor"}
+      </button>}
       <button type="button" onClick={()=>exportar("pdf")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground"><FileDown size={18}/> PDF</button>
       <button type="button" onClick={()=>exportar("jpeg")} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><ImageDown size={18}/> JPEG</button>
       <button type="button" onClick={()=>{const canvas=gerarCanvas();if(canvas){const win=window.open("","_blank");if(!win){toast.error("Permita pop-ups para imprimir.");return;}const imagem=win.document.createElement("img");imagem.alt="Orçamento";imagem.style.width="100%";imagem.onload=()=>{win.focus();win.print();};win.document.body.style.margin="0";win.document.body.appendChild(imagem);imagem.src=canvas.toDataURL("image/jpeg",.94);}}} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><Printer size={18}/> Imprimir</button>
       <button type="button" onClick={()=>void compartilhar()} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 font-semibold"><Send size={18}/> Enviar ao tutor</button>
     </div>
+    {podeCompartilharPortal && !demoAlvorada && (!tutorId || !animalId) && <p className="text-sm text-muted-foreground">Para compartilhar no Portal, selecione o animal e seu tutor cadastrado.</p>}
   </main>;
 }

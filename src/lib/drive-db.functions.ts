@@ -175,6 +175,10 @@ async function authorizedRows(t: string, table: string, rows: any[], ctx: AuthCo
 }
 
 export async function executarDriveDbInterno(q: z.infer<typeof querySchema>, coordinated = false, commitTimestamp?: string) {
+  if (["oricse_conferencia_cartoes", "oricse_fechamentos_comissao", "oricse_whatsapp_acompanhamentos"].includes(q.table)) {
+    throw new Error("Esta tabela operacional usa exclusivamente o banco autenticado.");
+  }
+
   if (q.operation !== "select" && !coordinated) {
     return await executarEscritaCoordenada("db", q);
   }
