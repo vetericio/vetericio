@@ -82,7 +82,7 @@ const vazio: Omit<Tutor, "id" | "criadoEm"> = {
   autorizaLembretes: true,
   autorizaWhatsapp: true,
   autorizaEmail: false,
-  autorizaMarketing: true,
+  autorizaMarketing: false,
   responsavelFinanceiroNome: "",
   responsavelFinanceiroDocumento: "",
   veterinarioPreferencial: "",
@@ -233,7 +233,8 @@ export function CadastroTutor({ dentroDaBusca }: {
     setErroCpf("");
     const { id, criadoEm, ...dados } = tutor;
     setEditandoId(id);
-    setForm({ ...vazio, ...dados });
+    // O padrão de cadastro novo não altera a preferência já registrada.
+    setForm({ ...vazio, ...dados, autorizaMarketing: dados.autorizaMarketing });
     setModo("editar");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -388,7 +389,7 @@ export function CadastroTutor({ dentroDaBusca }: {
                 className="h-4 w-4 shrink-0 accent-primary" />
               <span>
                 <span className="block font-semibold">Receber novidades e campanhas pelo WhatsApp</span>
-                <span className="block text-xs text-muted-foreground">Desmarque se o tutor não autorizou mensagens promocionais. Isso não impede avisos clínicos autorizados.</span>
+                <span className="block text-xs text-muted-foreground">Marque somente se o tutor autorizou receber campanhas pelo WhatsApp. Desmarcar não altera avisos clínicos autorizados.</span>
               </span>
             </label>
             <label className="text-sm font-semibold">Contato preferencial<select value={form.contatoPreferencial} onChange={(e) => set("contatoPreferencial", e.target.value)} className={campo}><option>WhatsApp</option><option>Ligação</option><option>E-mail</option></select></label>

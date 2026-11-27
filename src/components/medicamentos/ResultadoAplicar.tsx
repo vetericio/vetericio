@@ -12,7 +12,7 @@ export function ResultadoAplicar({ resultado }: { resultado: ResultadoDose }) {
   return (
     <div className="rounded-2xl border-2 border-primary bg-primary/10 p-3 text-center">
       <p className="text-2xl font-bold leading-tight text-foreground">
-        💉 APLICAR: {resultado.volumeTexto} {resultado.unidade}
+        Quantidade calculada: {resultado.volumeTexto} {resultado.unidade}
       </p>
       <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
         <p>Dose total: {resultado.contaDose}</p>

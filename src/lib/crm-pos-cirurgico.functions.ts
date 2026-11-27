@@ -145,7 +145,6 @@ export const criarJornadaPosCirurgica = createServerFn({ method: "POST" })
       titulo: tarefa.titulo,
       mensagem: mensagemPosCirurgica({
         tutorNome: fonte.tutorNome, animalNome: fonte.animalNome,
-        veterinarioNome: fonte.autorNome,
       }, tarefa),
       canal,
       agendado_para: new Date(tarefa.dataPrevista + "T09:00:00-03:00").toISOString(),

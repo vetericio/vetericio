@@ -14,7 +14,8 @@ import {
   calcularDose,
   calcularEntrada,
   doseDaEspecie,
-  doseEfetiva,
+  dosePadraoCadastrada,
+  especieBloqueada,
   faixaDe,
   viasDe,
   type Especie,
@@ -37,7 +38,12 @@ const campo =
 const rotulo = "block text-xs font-semibold text-muted-foreground";
 
 /** Calculadora independente: não salva nada. */
-export function PesquisaAvulsa({
+export function PesquisaAvulsa(props: Props) {
+  if (!props.aberto) return null;
+  return <PesquisaAvulsaContexto key={JSON.stringify([props.medicamento, props.especieInicial, props.pesoInicial])} {...props} />;
+}
+
+function PesquisaAvulsaContexto({
   aberto,
   onFechar,
   medicamento,
@@ -51,7 +57,7 @@ export function PesquisaAvulsa({
   const [origem, setOrigem] = useState<"dose" | "quantidade">("dose");
   const [unidadeDose, setUnidadeDose] = useState<string>("mg/kg");
   const [concentracao, setConcentracao] = useState("");
-  const [unidadeConcentracao, setUnidadeConcentracao] = useState<string>("mg/mL");
+  const [unidadeConcentracao, setUnidadeConcentracao] = useState<string>("");
   const [via, setVia] = useState("");
 
   const vias = useMemo(() => (medicamento ? viasDe(medicamento) : []), [medicamento]);
@@ -63,38 +69,52 @@ export function PesquisaAvulsa({
     setQuantidade("");
     if (especieInicial) setEspecie(especieInicial);
     if (pesoInicial) setPeso(pesoInicial);
-    if (!medicamento) return;
+    if (!medicamento) { setDose(""); return; }
     const alvo = especieInicial ?? "cao";
     const d = doseDaEspecie(medicamento, alvo);
     const f = faixaDe(d);
-    const efetiva = doseEfetiva(d);
-    setDose(efetiva !== null ? String(efetiva).replace(".", ",") : f.min);
+    const efetiva = dosePadraoCadastrada(d);
+    setDose(efetiva !== null ? String(efetiva).replace(".", ",") : "");
     setUnidadeDose(f.unidade);
     setConcentracao(medicamento.concentracaoValor);
-    setUnidadeConcentracao(medicamento.concentracaoUnidade || "mg/mL");
+    setUnidadeConcentracao(medicamento.concentracaoUnidade ?? "");
     setVia(viasDe(medicamento)[0] ?? "");
   }, [aberto, medicamento, especieInicial, pesoInicial]);
 
 
   // Trocar a espécie no diálogo atualiza a dose cadastrada correspondente.
   const trocarEspecie = (e: Especie) => {
+    if (e === especie) return;
     setEspecie(e);
-    setOrigem("dose");
+    setPeso("");
+    limparCalculo();
     if (!medicamento) return;
+    setConcentracao(medicamento.concentracaoValor);
+    setUnidadeConcentracao(medicamento.concentracaoUnidade ?? "");
     const d = doseDaEspecie(medicamento, e);
     const f = faixaDe(d);
-    const efetiva = doseEfetiva(d);
-    setDose(efetiva !== null ? String(efetiva).replace(".", ",") : f.min);
+    const efetiva = dosePadraoCadastrada(d);
+    setDose(efetiva !== null ? String(efetiva).replace(".", ",") : "");
     setUnidadeDose(f.unidade);
   };
 
-  const faixa = medicamento ? faixaDe(doseDaEspecie(medicamento, especie)) : null;
+  function limparCalculo() {
+    setDose("");
+    setQuantidade("");
+    setOrigem("dose");
+  }
+  const bloqueado = Boolean(medicamento && especieBloqueada(medicamento, especie));
+  const faixa = medicamento && !bloqueado ? faixaDe(doseDaEspecie(medicamento, especie)) : null;
+  const usaApresentacaoCadastrada = Boolean(medicamento &&
+    concentracao === medicamento.concentracaoValor &&
+    unidadeConcentracao === (medicamento.concentracaoUnidade ?? ""));
+  const exibeQuantidadeDaFaixa = Boolean(faixa && unidadeDose === faixa.unidade && usaApresentacaoCadastrada);
 
   const calcular = (valor: string) =>
     calcularDose({
       peso,
       dose: valor,
-      unidadeDose,
+      unidadeDose: faixa?.unidade ?? "",
       concentracaoValor: concentracao,
       concentracaoUnidade: unidadeConcentracao,
     });
@@ -103,9 +123,11 @@ export function PesquisaAvulsa({
     peso, dose, quantidade, origem, unidadeDose,
     concentracaoValor: concentracao, concentracaoUnidade: unidadeConcentracao,
   });
-  const resultado = entrada.resultado;
-  const resMin = faixa?.min ? calcular(faixa.min) : null;
-  const resMax = faixa?.max && faixa.max !== faixa.min ? calcular(faixa.max) : null;
+  const resultado = bloqueado
+    ? { ok: false as const, motivo: "Medicamento bloqueado no cadastro para esta espécie." }
+    : entrada.resultado;
+  const resMin = exibeQuantidadeDaFaixa && faixa?.min ? calcular(faixa.min) : null;
+  const resMax = exibeQuantidadeDaFaixa && faixa?.max && faixa.max !== faixa.min ? calcular(faixa.max) : null;
 
   const nome = medicamento
     ? [medicamento.nomeMenor, medicamento.nome]
@@ -166,16 +188,16 @@ export function PesquisaAvulsa({
             <span className={rotulo}>Dose</span>
             <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
               <input
-                value={entrada.dose}
+                aria-label="Valor da dose" value={bloqueado ? "" : entrada.dose} disabled={bloqueado}
                 onChange={(e) => { setOrigem("dose"); setDose(e.target.value); }}
                 inputMode="decimal"
                 placeholder="5"
                 className={`${campo} min-w-0`}
               />
               <input
-                list="avulsa-unidades-dose"
+                aria-label="Unidade da dose" list="avulsa-unidades-dose"
                 value={unidadeDose}
-                onChange={(e) => setUnidadeDose(e.target.value)}
+                onChange={(e) => { setUnidadeDose(e.target.value); limparCalculo(); }}
                 className={`${campo} min-w-0`}
 
                 placeholder="mg/kg"
@@ -192,16 +214,23 @@ export function PesquisaAvulsa({
             <span className={rotulo}>Concentração</span>
             <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
               <input
-                value={concentracao}
-                onChange={(e) => setConcentracao(e.target.value)}
+                aria-label="Valor da concentração" value={concentracao}
+                onChange={(e) => {
+                  setConcentracao(e.target.value);
+                  if (origem === "quantidade") limparCalculo();
+                }}
                 inputMode="decimal"
                 placeholder="50"
                 className={`${campo} min-w-0`}
               />
               <input
-                list="avulsa-unidades-conc"
+                aria-label="Unidade da concentração" list="avulsa-unidades-conc"
                 value={unidadeConcentracao}
-                onChange={(e) => setUnidadeConcentracao(e.target.value)}
+                onChange={(e) => {
+                  setUnidadeConcentracao(e.target.value);
+                  setConcentracao("");
+                  limparCalculo();
+                }}
                 className={`${campo} min-w-0`}
                 placeholder="mg/mL"
               />
@@ -214,11 +243,14 @@ export function PesquisaAvulsa({
           </div>
 
           <label className={rotulo}>Quantidade ({entrada.unidadeQuantidade || "apresentação"})
-            <input value={entrada.quantidade} inputMode="decimal" className={campo}
+            <input value={bloqueado ? "" : entrada.quantidade} disabled={bloqueado} inputMode="decimal" className={campo}
               onChange={(e) => { setOrigem("quantidade"); setQuantidade(e.target.value); }} />
           </label>
           <ResultadoAplicar resultado={resultado} />
 
+          {faixa && !exibeQuantidadeDaFaixa && (
+            <p className="text-xs text-muted-foreground">As unidades ou a apresentação foram alteradas. A faixa do cadastro não é recalculada com esses dados.</p>
+          )}
           {faixa && (resMin || resMax) && (
             <div className="grid grid-cols-2 gap-2 text-center text-xs">
               <div className="rounded-xl bg-secondary/60 px-2 py-2">
@@ -233,14 +265,10 @@ export function PesquisaAvulsa({
               <div className="rounded-xl bg-secondary/60 px-2 py-2">
                 <p className="font-semibold uppercase text-muted-foreground">Máxima</p>
                 <p className="text-base font-bold text-foreground">
-                  {resMax?.ok
-                    ? `${resMax.volumeTexto} ${resMax.unidade}`
-                    : resMin?.ok
-                      ? `${resMin.volumeTexto} ${resMin.unidade}`
-                      : "—"}
+                  {resMax?.ok ? `${resMax.volumeTexto} ${resMax.unidade}` : "—"}
                 </p>
                 <p className="text-muted-foreground">
-                  {faixa.max || faixa.min} {faixa.unidade}
+                  {faixa.max ? `${faixa.max} ${faixa.unidade}` : "Não informada"}
                 </p>
               </div>
             </div>

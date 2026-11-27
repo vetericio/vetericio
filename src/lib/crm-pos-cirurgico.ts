@@ -1,3 +1,4 @@
+import { AVISO_URGENCIA_ACOMPANHAMENTO } from "./crm-mensagem-local";
 /**
  * Planejamento de contatos pós-cirúrgicos.
  *
@@ -144,17 +145,14 @@ export function gerarTarefasPosCirurgicas(
 }
 
 export function mensagemPosCirurgica(
-  dados: { tutorNome: string; animalNome: string; veterinarioNome?: string | null },
+  dados: { tutorNome: string; animalNome: string },
   tarefa: Pick<TarefaPosCirurgica, "dia" | "perguntas">,
 ) {
-  const primeiroNome = (dados.tutorNome || "").trim().split(/\s+/)[0] || "tutor";
-  const animal = (dados.animalNome || "").trim() || "seu pet";
-  const medico = dados.veterinarioNome?.trim();
-  const apresentacao = medico
-    ? `Sou ${medico}, médico-veterinário responsável pelo acompanhamento de ${animal}.`
-    : `Aqui é da equipe veterinária que está acompanhando ${animal}.`;
+  const primeiroNome = (dados.tutorNome || "").trim().split(/\s+/)[0]?.replace(/[\r\n<>]/g, "") || "";
+  const animal = (dados.animalNome || "").trim().replace(/[\r\n<>]/g, " ").slice(0, 90) || "seu animal";
+  const saudacao = primeiroNome ? `Oi, ${primeiroNome}!` : "Oi!";
   const perguntas = tarefa.perguntas.join(" ");
-  return `Oi, ${primeiroNome}! Tudo bem?\n\n${apresentacao}\n\nEstamos acompanhando a recuperação de ${animal}. ${perguntas}\n\nSe perceber algo preocupante, entre em contato com a equipe. Estamos à disposição! 😊`;
+  return `${saudacao} Aqui é da equipe veterinária.\n\nComo está a recuperação de ${animal}? ${perguntas}\n\n${AVISO_URGENCIA_ACOMPANHAMENTO}`;
 }
 
 export function precisaAvaliacaoPrioritaria(resposta: {

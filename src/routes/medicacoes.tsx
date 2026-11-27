@@ -35,8 +35,9 @@ import {
 
 import {
   calcularFaixaDose,
+  calcularDose,
   doseDaEspecie,
-  doseEfetiva,
+  dosePadraoCadastrada,
   especieBloqueada,
   faixaDe,
   numero,
@@ -149,7 +150,12 @@ function PaginaMedicacoes() {
             </div>
           </div>
           <div className="min-w-0 flex-1">
-            <SeletorEspecie valor={especie} onChange={setEspecie} compacto />
+            <SeletorEspecie valor={especie} onChange={(nova) => {
+              if (nova !== especie) {
+                setEspecie(nova);
+                setPeso("");
+              }
+            }} compacto />
           </div>
         </div>
         <input
@@ -327,15 +333,15 @@ function PaginaMedicacoes() {
         onSalvar={salvar}
       />
       <PesquisaAvulsa
-        aberto={Boolean(avulsa)}
-        medicamento={avulsa}
+        aberto={Boolean(avulsa && medicamentos.some((m) => m.id === avulsa.id))}
+        medicamento={avulsa ? medicamentos.find((m) => m.id === avulsa.id) ?? null : null}
         especieInicial={especie}
         pesoInicial={formatarPeso(peso)}
 
         onFechar={() => setAvulsa(null)}
       />
       <DialogoMinistrar
-        medicamento={ministrando}
+        medicamento={ministrando ? medicamentos.find((m) => m.id === ministrando.id) ?? null : null}
         especie={especie}
         pesoInicial={formatarPeso(peso)}
         onFechar={() => setMinistrando(null)}
@@ -388,27 +394,21 @@ function CardMedicamento({
     ? `${m.concentracaoValor} ${m.concentracaoUnidade}`
     : "";
   const frequencia = dose.intervalo ? `${dose.intervalo}h` : "";
-  const podeAplicar = !bloqueado && resultado.ok && Boolean(resultado.volumeTexto);
-
   const forma = resultado.ok ? (resultado.forma ?? "mL") : "mL";
   const volMin = resultado.ok ? resultado.volMin : null;
   const volMax = resultado.ok ? resultado.volMax : null;
   const dMin = numero(faixa.min);
   const dMax = numero(faixa.max);
-  // Dose padrão cadastrada; sem ela, média entre mínima e máxima.
-  const dPadrao = doseEfetiva(dose);
-  // O volume é linear na dose: projeta a partir da mínima calculada.
-  const volPadrao =
-    volMin !== null && dMin !== null && dMin > 0 && dPadrao !== null
-      ? volMin * (dPadrao / dMin)
-      : volMin !== null && volMax !== null
-        ? (volMin + volMax) / 2
-        : (volMax ?? volMin);
+  const dPadrao = dosePadraoCadastrada(dose);
+  const padraoCalculado = dPadrao === null || bloqueado ? null : calcularDose({
+    peso, dose: String(dPadrao), unidadeDose: faixa.unidade,
+    concentracaoValor: m.concentracaoValor, concentracaoUnidade: m.concentracaoUnidade,
+  });
+  const quantidadePadrao = padraoCalculado?.ok
+    ? `${padraoCalculado.volumeTexto} ${padraoCalculado.unidade}` : null;
 
   const textoDose = (v: number | null) =>
     v === null ? "—" : `${v.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${faixa.unidade}`;
-
-  const unidadeDose = resultado.ok ? (resultado.unidade ?? forma) : forma;
 
   return (
     <li className="rounded-2xl border border-border bg-card/60 px-3 pt-2 pb-2.5">
@@ -510,43 +510,34 @@ function CardMedicamento({
           ) : (
             <div className="grid grid-cols-2 gap-1.5 text-center">
               <div className="rounded-xl bg-secondary/60 px-1 py-2">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Dose mín.</p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Mínima (referência)</p>
                 <p className="text-sm font-bold text-foreground">
-                  {volMin !== null ? textoQuantidade(volMin, forma) : "—"}
+                  {volMin !== null ? `${textoQuantidade(volMin, forma)} ${forma}` : "—"}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
                   {dMin !== null ? `(${textoDose(dMin)})` : "Não informada"}
                 </p>
               </div>
               <div className="rounded-xl bg-secondary/60 px-1 py-2">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Dose máx.</p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Máxima (referência)</p>
                 <p className="text-sm font-bold text-foreground">
-                  {volMax !== null
-                    ? textoQuantidade(volMax, forma)
-                    : volMin !== null
-                      ? textoQuantidade(volMin, forma)
-                      : "—"}
+                  {volMax !== null ? `${textoQuantidade(volMax, forma)} ${forma}` : "—"}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  {dMax !== null && dMin !== null && dMax > dMin
-                    ? `(${textoDose(dMax)})`
-                    : dMin !== null
-                      ? `(${textoDose(dMin)})`
-                      : "Não informada"}
+                  {dMax !== null && dMin !== null && dMax > dMin ? `(${textoDose(dMax)})` : "Não informada"}
                 </p>
               </div>
               <div className="col-span-2 border-t border-border pt-1.5">
                 <div className="rounded-xl bg-secondary/60 px-1.5 py-2">
                   <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                    Dose padrão ({unidadeDose})
+                    Dose padrão cadastrada
                   </p>
                   <p className="text-2xl font-bold leading-tight text-foreground">
-                    {volPadrao !== null ? textoQuantidade(volPadrao, forma) : "—"}
+                    {dPadrao !== null ? textoDose(dPadrao) : "Não cadastrada"}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    {dPadrao !== null && volPadrao !== null
-                      ? `(${textoDose(dPadrao)})`
-                      : "Não definida"}
+                    {quantidadePadrao ? `Quantidade calculada: ${quantidadePadrao}`
+                      : dPadrao === null ? "Informe a dose prescrita para este paciente." : "Quantidade não calculada"}
                   </p>
                 </div>
               </div>
@@ -565,15 +556,11 @@ function CardMedicamento({
         <button
           type="button"
           onClick={onMinistrar}
-          disabled={!podeAplicar}
+          disabled={bloqueado}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:cursor-default disabled:bg-secondary/50 disabled:text-muted-foreground"
         >
           <IconeVia via={vias[0] ?? ""} className="h-4 w-4" />
-          Ministrar
-          {podeAplicar && volPadrao !== null ? ` ${textoQuantidade(volPadrao, forma)}` : ""}
-          {podeAplicar && resultado.ok ? (
-            <span className="text-xs font-semibold">{resultado.unidade}</span>
-          ) : null}
+          Registrar administração
         </button>
         <button
           type="button"

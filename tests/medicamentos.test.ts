@@ -61,7 +61,7 @@ test("todas as combinações de unidades cadastráveis: ida e volta", () => {
       const c = interpretarConcentracao("75", concentracaoUnidade)!;
       const p = { ...base, dose: "0.25", unidadeDose, concentracaoValor: "75", concentracaoUnidade };
       const ida = calcularEntrada(p);
-      if (d.grandeza !== "volume" && d.grandeza !== c.grandeza) {
+      if (d.grandeza === "volume" ? c.unidade !== "mL" : d.grandeza !== c.grandeza) {
         assert.equal(ida.resultado.ok, false);
         continue;
       }

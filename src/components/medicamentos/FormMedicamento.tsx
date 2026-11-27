@@ -22,7 +22,7 @@ import {
   UNIDADES_CONCENTRACAO,
   UNIDADES_DOSE,
   VIAS,
-  faixaDe,
+  faixaDe, dosePadraoCadastrada,
   medicamentoVazio,
   viasDe,
   type DoseEspecie,
@@ -50,7 +50,7 @@ function normalizarDose(d: DoseEspecie): DoseEspecie {
   return {
     doseMin: f.min,
     doseMax: f.max,
-    dosePadrao: d.dosePadrao ?? "",
+    dosePadrao: d.dosePadrao ?? String(dosePadraoCadastrada(d) ?? ""),
     porAnimal: f.porAnimal,
     unidade: f.unidade,
     intervalo: d.intervalo ?? "",
@@ -195,12 +195,12 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
           <div>
             <span className={rotulo}>Dose padrão</span>
             <input
-              value={dose.dosePadrao ?? ""}
+              value={dose.dosePadrao ?? String(dosePadraoCadastrada(dose) ?? "")}
               onChange={(e) => atualizar({ dosePadrao: e.target.value })}
               inputMode="decimal"
               disabled={proibido}
               className={`${campo} min-w-0 disabled:opacity-50`}
-              placeholder="média"
+              placeholder="Opcional"
             />
           </div>
           <div>
@@ -227,8 +227,7 @@ export function FormMedicamento({ aberto, inicial, onFechar, onSalvar, onExcluir
           />
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Dose padrão vazia usa a média entre mínima e máxima. Só com a mínima, ela vale como dose
-          única.
+          Sem dose padrão cadastrada, a faixa fica apenas como referência. O sistema não escolhe a dose do paciente.
         </p>
       </fieldset>
     );

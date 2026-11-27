@@ -9,6 +9,15 @@ export const CHAVE_MEDICAMENTOS = "veterico-medicamentos-v1";
 
 export type Especie = "cao" | "gato";
 
+/** Só aceita uma espécie identificada; não trata pacientes desconhecidos como cães. */
+export function especieMedicacaoDaFicha(especie?: string): Especie | null {
+  const valor = (especie ?? "").trim().toLocaleLowerCase("pt-BR");
+  if (["cão", "cao", "cachorro", "cachorra", "canino", "canina"].includes(valor)) return "cao";
+  if (["gato", "gata", "felino", "felina"].includes(valor)) return "gato";
+  return null;
+}
+
+
 /** Vias de administração, sempre nesta ordem. */
 export const VIAS = [
   "IV",
@@ -92,7 +101,7 @@ export type DoseEspecie = {
   doseMin?: string;
   /** dose máxima — opcional */
   doseMax?: string;
-  /** dose padrão — opcional; vazia = média entre mínima e máxima */
+  /** dose padrão explícita — opcional e nunca inferida pela faixa */
   dosePadrao?: string;
   /** true = dose fixa por animal (não multiplica pelo peso) */
   porAnimal?: boolean;
@@ -104,18 +113,14 @@ export type DoseEspecie = {
   proibido?: boolean;
 };
 
-/**
- * Dose usada no cálculo principal: a padrão cadastrada; se vazia, a média
- * entre mínima e máxima (ou a única que existir).
- */
-export function doseEfetiva(d: DoseEspecie): number | null {
-  const padrao = numero(d.dosePadrao ?? "");
-  if (padrao !== null && padrao > 0) return padrao;
-  const f = faixaDe(d);
-  const min = numero(f.min);
-  const max = numero(f.max);
-  if (min !== null && max !== null && max > min) return (min + max) / 2;
-  return min ?? max;
+/** Retorna apenas dose explícita; faixa de referência nunca é uma prescrição. */
+export function dosePadraoCadastrada(d: DoseEspecie): number | null {
+  if (d.proibido) return null;
+  // O campo legado `dose` representava uma dose única explicitamente cadastrada.
+  // Não reaproveitar valores legados quando já existe esquema de faixa/padrão.
+  const legado = d.dosePadrao === undefined && d.doseMin === undefined && d.doseMax === undefined;
+  const valor = numero(legado ? d.dose ?? "" : d.dosePadrao ?? "");
+  return valor !== null && valor > 0 ? valor : null;
 }
 
 /** Lê a faixa de dose, tolerando cadastros antigos que só tinham `dose`. */
@@ -363,6 +368,18 @@ export function interpretarConcentracao(
   return null;
 }
 
+export const UNIDADES_REGISTRO_MANUAL = ["mL", "g", "comprimido", "cápsula", "gota"] as const;
+
+export function unidadesRegistroManual(concentracaoUnidade: string): readonly string[] {
+  // Entender a apresentação sem inventar uma concentração para fazer contas.
+  const forma = interpretarConcentracao("1", concentracaoUnidade)?.unidade;
+  return forma ? [forma] : UNIDADES_REGISTRO_MANUAL;
+}
+
+function volumeCompativelComApresentacao(unidade: string): boolean {
+  return !unidade.trim() || interpretarConcentracao("1", unidade)?.unidade === "mL";
+}
+
 /* ---------- unidade da dose ---------- */
 
 export type FormaDose = {
@@ -453,6 +470,9 @@ export function calcularDose(params: {
 
   // Dose já em volume: nada a converter.
   if (formaDose.grandeza === "volume") {
+    if (!volumeCompativelComApresentacao(params.concentracaoUnidade)) {
+      return { ok: false, motivo: AVISO_INCOMPATIVEL };
+    }
     const volumeTexto = formatarVolume(doseTotal);
     return {
       ok: true,
@@ -504,7 +524,7 @@ export function calcularDosePeloVolume(params: {
   const volume = numero(params.volume);
   const formaDose = interpretarUnidadeDose(params.unidadeDose ?? "mg/kg");
   if (!formaDose) return { ok: false, motivo: AVISO_INCOMPATIVEL };
-  if (volume === null || volume <= 0) return { ok: false, motivo: "Informe o volume em mL." };
+  if (volume === null || volume <= 0) return { ok: false, motivo: "Informe uma quantidade positiva na unidade indicada." };
 
   const peso = numero(params.peso);
   if (!formaDose.porAnimal && (peso === null || peso <= 0))
@@ -512,6 +532,10 @@ export function calcularDosePeloVolume(params: {
 
   // Uma dose já expressa em mL não depende da concentração.
   if (formaDose.grandeza === "volume") {
+    if (!volumeCompativelComApresentacao(params.concentracaoUnidade) ||
+        (params.unidadeQuantidade && params.unidadeQuantidade !== "mL")) {
+      return { ok: false, motivo: AVISO_INCOMPATIVEL };
+    }
     const fator = formaDose.porAnimal ? 1 : (peso as number);
     const dose = volume / fator;
     return {
@@ -570,7 +594,9 @@ export type EntradaCalculo = {
 export function calcularEntrada(p: EntradaCalculo) {
   const formaDose = interpretarUnidadeDose(p.unidadeDose);
   const forma = interpretarConcentracao(p.concentracaoValor, p.concentracaoUnidade);
-  const unidadeQuantidade = formaDose?.grandeza === "volume" ? "mL" : forma?.unidade ?? "";
+  const unidadeQuantidade = formaDose?.grandeza === "volume"
+    ? volumeCompativelComApresentacao(p.concentracaoUnidade) ? "mL" : ""
+    : forma?.unidade ?? "";
   const inverso = p.origem === "quantidade"
     ? calcularDosePeloVolume({ ...p, volume: p.quantidade, unidadeQuantidade })
     : null;
@@ -720,6 +746,7 @@ export function calcularFaixaDose(params: {
   let volMax: number | null;
 
   if (formaDose.grandeza === "volume") {
+    if (!volumeCompativelComApresentacao(params.concentracaoUnidade)) return semVolume(AVISO_INCOMPATIVEL);
     formaUnidade = "mL";
     volMin = totalMin;
     volMax = totalMax;

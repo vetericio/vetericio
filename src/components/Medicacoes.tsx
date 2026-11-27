@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type RefObject } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { lerReceitaComIA } from "@/lib/medicacoes.functions";
@@ -10,12 +10,12 @@ import {
   calcularDose,
   calcularDosePeloVolume,
   calcularEntrada,
-  interpretarUnidadeDose,
   numero,
-  textoDecimal,
+  UNIDADES_REGISTRO_MANUAL,
   doseDaEspecie,
-  doseEfetiva,
+  dosePadraoCadastrada,
   especieBloqueada,
+  especieMedicacaoDaFicha,
   faixaDe,
   viasDe,
 } from "@/lib/medicamentos";
@@ -27,12 +27,10 @@ type Props = {
   somenteLeitura?: boolean;
   /** Espécie do animal, usada para puxar a dose padrão cadastrada. */
   especie?: EspecieFicha;
+  pacienteId?: string;
   /** Peso do animal (kg) vindo do cadastro; base do cálculo do volume. */
   peso?: string;
 };
-
-const UNIDADES = ["mL", "cápsula/comprimido"] as const;
-type Unidade = (typeof UNIDADES)[number];
 
 const DURACOES_PADRAO = ["8h", "12h", "24h"] as const;
 const DURACAO_OUTROS = "outros";
@@ -45,41 +43,6 @@ function lerComoDataUrl(arquivo: File): Promise<string> {
     leitor.onerror = () => reject(new Error("Falha ao ler arquivo"));
     leitor.readAsDataURL(arquivo);
   });
-}
-
-/** Tenta separar uma dose "0,5 mL" ou "1 cp" em quantidade + unidade. */
-function parseDose(dose: string): { quantidade: string; unidade: Unidade } {
-  const limpa = dose.trim();
-  const lower = limpa.toLowerCase();
-  if (lower.includes("cp") || lower.includes("cápsula") || lower.includes("capsula") || lower.includes("comprimido") || lower.includes("comp")) {
-    const match = limpa.match(/^([\d,.]+)\s*/);
-    return { quantidade: match?.[1] ?? limpa, unidade: "cápsula/comprimido" };
-  }
-  if (lower.includes("ml")) {
-    const match = limpa.match(/^([\d,.]+)\s*/);
-    return { quantidade: match?.[1] ?? limpa, unidade: "mL" };
-  }
-  return { quantidade: limpa, unidade: "mL" };
-}
-
-/** Define o modo do radio a partir da duração salva. */
-function parseDuracao(duracao: string): { modo: DuracaoPadrao; outros: string } {
-  const valor = duracao.trim();
-  if (!valor) return { modo: "", outros: "" };
-  if ((DURACOES_PADRAO as readonly string[]).includes(valor)) {
-    return { modo: valor as DuracaoPadrao, outros: "" };
-  }
-  if (valor) {
-    return { modo: DURACAO_OUTROS, outros: valor };
-  }
-  return { modo: "", outros: "" };
-}
-
-
-function montarDose(quantidade: string, unidade: Unidade): string {
-  const q = quantidade.trim();
-  if (!q) return "";
-  return `${q} ${unidade}`;
 }
 
 function duracaoParaSalvar(modo: DuracaoPadrao, outros: string): string {
@@ -103,8 +66,9 @@ type Sugestao = {
 
 /** Rótulo curto da espécie, como pedido: "Cão" / "Gato". */
 function rotuloEspecie(e: EspecieFicha | undefined): string {
-  if (e === "Cachorro") return "Cão";
-  if (e === "Gato") return "Gato";
+  const especie = especieMedicacaoDaFicha(e);
+  if (especie === "cao") return "Cão";
+  if (especie === "gato") return "Gato";
   return "";
 }
 
@@ -225,9 +189,16 @@ function CampoNomeMedicacao({
   );
 }
 
-export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, peso = "" }: Props) {
-
+export function Medicacoes(props: Props) {
   const { medicamentos } = useMedicamentos();
+  // Estado dos formulários é efêmero. Alterar contexto invalida seleção, unidade e números juntos,
+  // antes de qualquer render/submit que pudesse usar a apresentação anterior.
+  const contexto = JSON.stringify([props.pacienteId, props.especie, props.peso, medicamentos]);
+  return <MedicacoesContexto key={contexto} {...props} medicamentos={medicamentos} />;
+}
+
+function MedicacoesContexto({ lista, onChange, somenteLeitura = false, especie, peso = "", medicamentos }:
+  Props & { medicamentos: ReturnType<typeof useMedicamentos>["medicamentos"] }) {
   const [aberto, setAberto] = useState(true);
   const [lendo, setLendo] = useState(false);
   const [textoBruto, setTextoBruto] = useState("");
@@ -235,7 +206,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const [edicaoInline, setEdicaoInline] = useState<{ dose: string; quantidade: string; duracao: string } | null>(null);
   const [nome, setNome] = useState("");
   const [quantidade, setQuantidade] = useState("");
-  const [unidade, setUnidade] = useState<Unidade>("mL");
+  const [unidadeManual, setUnidadeManual] = useState("");
   const [modoQuantidade, setModoQuantidade] = useState<"ml" | "dose">("dose");
   const [duracao, setDuracao] = useState<DuracaoPadrao>("");
   const [duracaoOutros, setDuracaoOutros] = useState("");
@@ -259,16 +230,22 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const quantidadeRef = useRef<HTMLInputElement>(null);
   const outrosRef = useRef<HTMLInputElement>(null);
   const lerIA = useServerFn(lerReceitaComIA);
+  const contextoVigente = useRef(false);
+  useLayoutEffect(() => {
+    contextoVigente.current = true;
+    return () => { contextoVigente.current = false; };
+  }, []);
 
   /** ⭐ Medicações favoritas do cadastro, em ordem alfabética, com a dose padrão. */
   const especiais = useMemo(() => {
-    const chave = especie === "Gato" ? "gato" : "cao";
+    const chave = especieMedicacaoDaFicha(especie);
+    if (!chave) return [];
     return medicamentos
       .filter((m) => m.favorito && m.nome.trim() && !especieBloqueada(m, chave))
       .map((m) => {
         const d = doseDaEspecie(m, chave);
         const f = faixaDe(d);
-        const padrao = doseEfetiva(d);
+        const padrao = dosePadraoCadastrada(d);
         const dose = padrao === null ? "" : `${String(padrao).replace(".", ",")} ${f.unidade}`;
         return {
           id: m.id,
@@ -287,13 +264,14 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
 
   /** Sugestões ao digitar: só o que está cadastrado no Veterício. */
   const sugestoes = useMemo<Sugestao[]>(() => {
-    const chave = especie === "Gato" ? "gato" : "cao";
+    const chave = especieMedicacaoDaFicha(especie);
+    if (!chave) return [];
     return medicamentos
       .filter((m) => m.nome.trim() && !especieBloqueada(m, chave))
       .map((m) => {
         const d = doseDaEspecie(m, chave);
         const f = faixaDe(d);
-        const padrao = doseEfetiva(d);
+        const padrao = dosePadraoCadastrada(d);
         return {
           id: m.id,
           nome: normalizarNomeMedicamento(m.nome),
@@ -322,7 +300,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const doseExibida = entrada?.dose ?? doseUsada;
   const calculo = entrada?.resultado ?? null;
   const volumeCalculado = entrada?.quantidade ?? quantidade;
-  const unidadeCalculada = entrada?.unidadeQuantidade || unidade;
+  const unidadeCalculada = refCalculo ? entrada?.unidadeQuantidade ?? "" : unidadeManual;
 
   /** Medicação cadastrada correspondente à linha do modo rápido. */
   const refDaLinha = (i: number): Sugestao | null => {
@@ -340,10 +318,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const calculoDaLinha = (i: number, ref: Sugestao | null) => {
     if (!ref) return null;
     const dose = doseDaLinha(i, ref);
-    if (!dose.trim() || !ref.concValor.trim())
+    if (!dose.trim())
       return {
         ok: false as const,
-        motivo: "Cálculo indisponível: falta dose ou concentração cadastrada.",
+        motivo: "Informe a dose prescrita.",
       };
     return calcularDose({
       peso,
@@ -357,7 +335,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   /** Puxa a medicação cadastrada; a dose padrão vai preenchida e continua editável. */
   const usarEspecial = (item: (typeof especiais)[number]) => {
     const conta =
-      item.dosePadrao && item.concValor
+      item.dosePadrao
         ? calcularDose({
             peso,
             dose: item.dosePadrao,
@@ -366,6 +344,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
             unidadeDose: item.unidadeDose,
           })
         : null;
+    if (!conta?.ok || !item.dose.trim()) {
+      toast.error("Informe a dose prescrita e confira a quantidade no formulário antes de adicionar.");
+      return;
+    }
     onChange([
       ...lista,
       {
@@ -382,7 +364,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
   const resetForm = () => {
     setNome("");
     setQuantidade("");
-    setUnidade("mL");
+    setUnidadeManual("");
     setModoQuantidade("ml");
     setDuracao("");
     setDuracaoOutros("");
@@ -394,12 +376,17 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
 
   const enviarRapido = () => {
     const itens: Medicacao[] = [];
+    const semDose: string[] = [];
     nomesRapidos.forEach((n, i) => {
       const nomeLimpo = normalizarNomeMedicamento(n);
       if (!nomeLimpo) return;
       const ref = refDaLinha(i);
       const dose = doseDaLinha(i, ref);
       const conta = calculoDaLinha(i, ref);
+      if (ref && !conta?.ok) {
+        semDose.push(nomeLimpo);
+        return;
+      }
       itens.push({
         nome: nomeLimpo,
         dose: ref && dose.trim() ? `${dose} ${ref.unidadeDose}`.trim() : "",
@@ -408,6 +395,10 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
         ...(conta?.ok ? { quantidade: `${conta.volumeTexto} ${conta.unidade}` } : {}),
       });
     });
+    if (semDose.length) {
+      toast.error("Informe a dose prescrita e confira o cálculo: " + semDose.join(", ") + ".");
+      return;
+    }
     if (itens.length === 0) {
       toast.error("Escreva o nome de ao menos uma medicação.");
       return;
@@ -432,9 +423,12 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       return;
     }
     const quantidadeFinal = volumeCalculado.trim();
+    if (quantidadeFinal && (!unidadeCalculada || (numero(quantidadeFinal) ?? 0) <= 0)) {
+      toast.error("Informe uma quantidade positiva e confirme a unidade.");
+      return;
+    }
     const dose = refCalculo && doseExibida.trim()
-      ? `${doseExibida.trim()} ${refCalculo.unidadeDose}`
-      : montarDose(quantidadeFinal, unidade);
+      ? `${doseExibida.trim()} ${refCalculo.unidadeDose}` : "";
     if (duracao === DURACAO_OUTROS && !duracaoOutros.trim()) {
       toast.error("Escreva a duração em outros.");
       return;
@@ -452,8 +446,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       programadaEm: horarioInicial
         ? (mesmaProgramacao ? anterior?.programadaEm : undefined) || new Date().toISOString()
         : undefined,
-      ...(refCalculo && quantidadeFinal
-        ? { quantidade: `${quantidadeFinal} ${unidadeCalculada || unidade}` }
+      ...(quantidadeFinal
+        ? { quantidade: `${quantidadeFinal} ${unidadeCalculada}` }
         : {}),
     };
 
@@ -473,41 +467,12 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
     const item = lista[indice];
     if (!item) return;
     setEdicaoInline({ dose: item.dose ?? "", quantidade: item.quantidade ?? "", duracao: item.duracao ?? "" });
-    const doseSalva = item.dose.trim();
-    const doseNumerica = doseSalva.match(/[\d,.]+/)?.[0] ?? "";
-    const doseEhVolume = /\bml\b/i.test(doseSalva);
-    const quantidadeSalva = item.quantidade?.trim() ?? "";
-    const volumeNumerico = quantidadeSalva.match(/[\d,.]+/)?.[0] ?? "";
-    const quantidadeEhVolume = /\bml\b/i.test(quantidadeSalva);
-    const { quantidade: qAntiga, unidade: uAntiga } = parseDose(item.dose);
-    const { modo, outros } = parseDuracao(item.duracao);
-    const referencia = sugestoes.find(
-      (s) => s.nome.toLocaleLowerCase("pt-BR") === item.nome.toLocaleLowerCase("pt-BR"),
-    );
+    // A edição de uma linha já registrada não converte a quantidade pelo cadastro atual.
+    // O par dose/unidade e a apresentação permanecem exatamente como foram lançados.
     setNome(item.nome);
-    setRefCalculo(referencia ?? null);
-    // Respeita a unidade salva: mg/kg não é mg total.
-    let doseEditada = doseNumerica;
-    const unidadeSalva = doseSalva.match(/^[\d,.]+\s*([^()]+)/)?.[1]?.trim() ?? "";
-    const formaDestino = referencia ? interpretarUnidadeDose(referencia.unidadeDose) : null;
-    if (referencia && formaDestino && unidadeSalva !== referencia.unidadeDose) {
-      const formaOrigem = interpretarUnidadeDose(unidadeSalva.includes("/") ? unidadeSalva : unidadeSalva + "/animal");
-      const valor = numero(doseNumerica);
-      const kg = numero(peso);
-      if (formaOrigem && formaOrigem.grandeza === formaDestino.grandeza && valor !== null &&
-          ((formaOrigem.porAnimal && formaDestino.porAnimal) || (kg !== null && kg > 0))) {
-        const totalBase = valor * formaOrigem.fator * (formaOrigem.porAnimal ? 1 : kg!);
-        doseEditada = textoDecimal(totalBase / formaDestino.fator / (formaDestino.porAnimal ? 1 : kg!));
-      } else {
-        doseEditada = "";
-      }
-    }
-    setDoseUsada(doseEditada);
-    setQuantidade(quantidadeEhVolume ? volumeNumerico : doseEhVolume ? qAntiga : "");
-    setUnidade(quantidadeEhVolume || doseEhVolume ? "mL" : uAntiga);
-    setModoQuantidade(doseEditada ? "dose" : "ml");
-    setDuracao(modo);
-    setDuracaoOutros(outros);
+    setRefCalculo(null);
+    setDoseUsada("");
+    setQuantidade("");
     setHorarioInicial(item.horarioInicial ?? "");
     setEditando(indice);
     setFormCompleto(true);
@@ -521,12 +486,16 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
 
   const salvarEdicaoInline = (indice: number) => {
     if (!edicaoInline) return;
-    const doseFinal = refCalculo && doseExibida.trim()
-      ? `${doseExibida.trim()} ${refCalculo.unidadeDose}`
-      : edicaoInline.dose.trim();
-    const quantidadeFinal = refCalculo && volumeCalculado.trim()
-      ? `${volumeCalculado.trim()} ${unidadeCalculada || "mL"}`
-      : edicaoInline.quantidade.trim();
+    const anterior = lista[indice];
+    if (!anterior) return;
+    const doseFinal = edicaoInline.dose.trim();
+    const quantidadeFinal = edicaoInline.quantidade.trim();
+    const temUnidade = (texto: string) => !texto || /[\p{L}µ%]/u.test(texto);
+    if ((doseFinal !== anterior.dose && !temUnidade(doseFinal)) ||
+        (quantidadeFinal !== (anterior.quantidade ?? "") && !temUnidade(quantidadeFinal))) {
+      toast.error("Ao alterar dose ou quantidade, informe também a unidade registrada.");
+      return;
+    }
     onChange(lista.map((m, i) => i === indice ? {
       ...m,
       dose: doseFinal,
@@ -636,7 +605,9 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
           const { data: sessao } = await supabase.auth.getSession();
           const accessToken = sessao.session?.access_token;
           if (!accessToken) throw new Error("Sessão expirada. Entre novamente no sistema.");
+          if (!contextoVigente.current) return;
           const resultado = await lerIA({ data: { imagem, accessToken } });
+          if (!contextoVigente.current) return;
           encontradas = resultado.medicacoes.map(enriquecerLeituraFoto);
           usouIA = true;
         } catch {
@@ -647,6 +618,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       if (!usouIA || encontradas.length === 0) {
         try {
           const offline = await lerOffline(arquivo);
+          if (!contextoVigente.current) return;
           if (encontradas.length === 0) {
             encontradas = offline.encontradas.map(enriquecerLeituraFoto);
           }
@@ -657,6 +629,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
         }
       }
 
+      if (!contextoVigente.current) return;
       setTextoBruto(texto);
       if (encontradas.length === 0) {
         toast.info("Não reconheci medicações. Confira o texto lido e preencha à mão.");
@@ -670,9 +643,9 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
       }
       setAberto(true);
     } catch {
-      toast.error("Não foi possível ler a imagem.");
+      if (contextoVigente.current) toast.error("Não foi possível ler a imagem.");
     } finally {
-      setLendo(false);
+      if (contextoVigente.current) setLendo(false);
       if (cameraRef.current) cameraRef.current.value = "";
       if (galeriaRef.current) galeriaRef.current.value = "";
     }
@@ -764,33 +737,25 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                             Dose
                             <input
                               aria-label="Dose"
-                              value={refCalculo ? doseExibida : edicaoInline.dose}
+                              value={edicaoInline.dose}
                               onChange={(e) => {
                                 const valor = e.target.value;
                                 setEdicaoInline((v) => v ? { ...v, dose: valor } : v);
-                                if (refCalculo) {
-                                  setDoseUsada(valor);
-                                  setModoQuantidade("dose");
-                                }
                               }}
                               placeholder="Dose"
                               className="mt-0.5 w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
                             />
                           </label>
                           <label className="min-w-0 text-[10px] text-muted-foreground">
-                            mL
+                            Quantidade e unidade
                             <input
                               aria-label="Quantidade"
-                              value={refCalculo ? volumeCalculado : edicaoInline.quantidade}
+                              value={edicaoInline.quantidade}
                               onChange={(e) => {
-                                const valor = e.target.value.replace(/\\s*m[lL]?$/i, "");
+                                const valor = e.target.value;
                                 setEdicaoInline((v) => v ? { ...v, quantidade: valor } : v);
-                                if (refCalculo) {
-                                  setQuantidade(valor);
-                                  setModoQuantidade("ml");
-                                }
                               }}
-                              placeholder="mL"
+                              placeholder="Quantidade e unidade"
                               className="mt-0.5 w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
                             />
                           </label>
@@ -814,9 +779,6 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                             className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
                           />
                         </label>
-                        {refCalculo && calculo && !calculo.ok && (
-                          <span className="block text-[10px] text-destructive">{calculo.motivo}</span>
-                        )}
                         <span className="flex gap-1.5">
                           <button type="button" onClick={() => salvarEdicaoInline(i)} className="rounded-lg bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
                             Salvar
@@ -879,15 +841,16 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
             </button>
 
             <p className="text-[11px] font-semibold text-muted-foreground">
-              {rotuloEspecie(especie) ? `Espécie: ${rotuloEspecie(especie)}` : "Espécie: não informada"}
+              {rotuloEspecie(especie) ? `Espécie: ${rotuloEspecie(especie)}` : "Sem espécie canina ou felina confirmada, não há sugestão de dose"}
               {" | "}
               {peso.trim() ? `Peso: ${peso.trim()} kg` : "Peso: não informado na ficha"}
+              {" · Se o contexto mudar, os campos não salvos são limpos."}
             </p>
 
             {especiais.length > 0 && (
               <div>
                 <p className="text-[11px] font-semibold text-muted-foreground">
-                  ⭐ Medicações cadastradas (toque para puxar com a dose padrão)
+                  ⭐ Medicações cadastradas (atalho quando há dose e cálculo disponíveis)
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {especiais.map((m) => (
@@ -991,7 +954,7 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                                     </span>
                                   </div>
                                   <div className="rounded-md bg-background px-2 py-1.5">
-                                    <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Volume</span>
+                                    <span className="block text-[10px] font-semibold uppercase text-muted-foreground">Quantidade calculada</span>
                                     <strong className="text-foreground">{conta.volumeTexto} {conta.unidade}</strong>
                                     <span className="block text-[10px] text-muted-foreground">
                                       {peso.trim()} kg × {dose} ÷ {ref.concValor}
@@ -1042,11 +1005,13 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                 onChange={(valor) => {
                   setNome(valor);
                   setRefCalculo(sugestoes.find((s) => s.nome.toLocaleLowerCase("pt-BR") === valor.trim().toLocaleLowerCase("pt-BR")) ?? null);
+                  setUnidadeManual("");
                   setDoseUsada("");
                   setQuantidade("");
                 }}
                 onEscolher={(s) => {
                   setRefCalculo(s);
+                  setUnidadeManual("");
                   setDoseUsada(s.dosePadrao);
                   setModoQuantidade("dose");
                   setQuantidade("");
@@ -1066,8 +1031,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
               />
 
               <div className="grid min-w-0 gap-1.5 sm:grid-cols-2">
-                <label className="min-w-0">
-                  <span className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">Dose ({refCalculo?.unidadeDose || "unidade cadastrada"})</span>
+                {refCalculo ? <label className="min-w-0">
+                  <span className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">Dose ({refCalculo.unidadeDose})</span>
                   <input
                   ref={quantidadeRef}
                   inputMode="decimal"
@@ -1089,9 +1054,17 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                   placeholder="Dose"
                   className={`${campo} min-w-0 flex-1`}
                   />
-                </label>
+                </label> : <label className="min-w-0">
+                  <span className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">Unidade informada</span>
+                  <select aria-label="Unidade informada" value={unidadeManual}
+                    className={`${campo} min-w-0`}
+                    onChange={(e) => { setUnidadeManual(e.target.value); setQuantidade(""); }}>
+                    <option value="">Selecione a unidade</option>
+                    {UNIDADES_REGISTRO_MANUAL.map((u) => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </label>}
                 <label className="min-w-0">
-                  <span className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">Quantidade ({unidadeCalculada})</span>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">Quantidade{unidadeCalculada ? ` (${unidadeCalculada})` : ""}</span>
                   <input
                   value={volumeCalculado}
                   onChange={(e) => {
@@ -1100,8 +1073,8 @@ export function Medicacoes({ lista, onChange, somenteLeitura = false, especie, p
                     setDoseUsada("");
                   }}
                   inputMode="decimal"
-                  placeholder="mL"
-                  aria-label={`Quantidade em ${unidadeCalculada}`}
+                  disabled={!unidadeCalculada}
+                  aria-label={unidadeCalculada ? `Quantidade em ${unidadeCalculada}` : "Quantidade"}
                   className={`${campo} min-w-0`}
                   />
                 </label>
