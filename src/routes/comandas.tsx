@@ -213,8 +213,12 @@ export function Comandas() {
   }, []);
 
   const [cadastrosClinicaId, setCadastrosClinicaId] = useState("");
-  const cadastrosProntos = !!clinicaId && clinicaId === cadastrosClinicaId
-    && !carregandoPermissoes && !carregandoCadastros && !erroCadastros;
+  const cadastrosProntos =
+    !!clinicaId &&
+    clinicaId === cadastrosClinicaId &&
+    !carregandoPermissoes &&
+    !carregandoCadastros &&
+    !erroCadastros;
 
   // Cadastros pertencem à clínica ativa no banco; armazenamento local não é a fonte de verdade.
   useEffect(() => {
@@ -723,19 +727,28 @@ export function Comandas() {
                 className={`${inputClass} mt-1 disabled:bg-muted/40`}
               >
                 <option value="">
-                  {cadastrosProntos && tutorIdNovo ? "Selecione o animal" : "Escolha primeiro o tutor"}
+                  {cadastrosProntos && tutorIdNovo
+                    ? "Selecione o animal"
+                    : "Escolha primeiro o tutor"}
                 </option>
-                {cadastrosProntos && animaisDoTutor.map((animal) => (
-                  <option key={animal.id} value={animal.id}>
-                    {animal.nome}
-                    {animal.especie ? ` · ${animal.especie}` : ""}
-                  </option>
-                ))}
+                {cadastrosProntos &&
+                  animaisDoTutor.map((animal) => (
+                    <option key={animal.id} value={animal.id}>
+                      {animal.nome}
+                      {animal.especie ? ` · ${animal.especie}` : ""}
+                    </option>
+                  ))}
               </select>
             </label>
             <button
               type="submit"
-              disabled={carregandoResponsavel || !cadastrosProntos || !responsavel.id || !tutorIdNovo || !animalIdNovo}
+              disabled={
+                carregandoResponsavel ||
+                !cadastrosProntos ||
+                !responsavel.id ||
+                !tutorIdNovo ||
+                !animalIdNovo
+              }
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ReceiptText size={17} /> Criar comanda
