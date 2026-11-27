@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { clienteSupabaseUsuario } from "@/lib/permissao-clinica.server";
 import { diaNoFuso, somarDias, type DadosRelatorio } from "./relatorios";
+import { listarComprasControladosAutorizadas } from "./compras-controlados.server";
 import {
   categoriaDocumento,
   montarRelatorioDocumentos,
@@ -71,24 +72,28 @@ export async function gerarRelatorioDocumentos({
   if (codigo === "23") {
     // A faixa em UTC inclui a borda do dia no fuso brasileiro. O filtro final usa
     // o fuso histórico de São Paulo para não deslocar operações próximas da meia-noite.
-    const movimentos = await paginar<MovimentoRelatorio>((de, ate) =>
-      banco
-        .from("oricse_historico_estoque")
-        .select(
-          "id,item_id,item_nome,tipo,quantidade,estoque_anterior,estoque_posterior,registrado_em",
-        )
-        .eq("clinica_id", clinicaId)
-        .gte("registrado_em", inicio + "T00:00:00Z")
-        .lt("registrado_em", somarDias(fim, 2) + "T00:00:00Z")
-        .order("registrado_em", { ascending: false })
-        .order("id")
-        .range(de, ate),
-    );
+    const [movimentos, compras] = await Promise.all([
+      paginar<MovimentoRelatorio>((de, ate) =>
+        banco
+          .from("oricse_historico_estoque")
+          .select(
+            "id,item_id,item_nome,tipo,quantidade,estoque_anterior,estoque_posterior,registrado_em",
+          )
+          .eq("clinica_id", clinicaId)
+          .gte("registrado_em", inicio + "T00:00:00Z")
+          .lt("registrado_em", somarDias(fim, 2) + "T00:00:00Z")
+          .order("registrado_em", { ascending: false })
+          .order("id")
+          .range(de, ate),
+      ),
+      listarComprasControladosAutorizadas({ accessToken, clinicaId, inicio, fim }),
+    ]);
     return montarRelatorioMovimentos(
       movimentos.filter((movimento) => {
         const dia = diaNoFuso(movimento.registrado_em);
         return dia >= inicio && dia <= fim;
       }),
+      compras,
     );
   }
 

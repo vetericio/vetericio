@@ -148,3 +148,32 @@ test("documentos distinguem os quatro tipos, não mostram prévias nem dados imp
   assert.equal(categoriaDocumento("Termo - Prévia demonstrativa", "Termo de internação"), null);
   assert.equal(categoriaDocumento("Outros", "Comprovante de vermifugação"), "Comprovante");
 });
+
+test("compras completas e pendentes são contadas à parte, sem converter estoque em compras", () => {
+  const registro = {
+    dataCompra: "2026-11-27",
+    produtoNome: "Produto fictício",
+    quantidade: 7,
+    fornecedor: "Fornecedor fictício",
+    notaFiscal: "NF 42",
+    lote: "L1",
+    autorNome: "Equipe",
+    status: "completo" as const,
+  };
+  const dados = montarRelatorioMovimentos(
+    [],
+    [registro, { ...registro, quantidade: null, notaFiscal: null, status: "pendente" }],
+  );
+  assert.deepEqual(
+    dados.indicadores.map((i) => i.valor),
+    [1, 1, 0, 0],
+  );
+  assert.equal(dados.tabelas[0].linhas[0].at(-1), "Completo");
+  assert.equal(dados.tabelas[0].linhas[1].at(-1), "Pendente");
+  assert.equal(dados.tabelas[0].linhas[1][2], "—");
+  assert.equal(dados.tabelas[1].linhas.length, 0);
+  assert.deepEqual(
+    montarRelatorioMovimentos([], []).indicadores.map((i) => i.valor),
+    [0, 0, 0, 0],
+  );
+});

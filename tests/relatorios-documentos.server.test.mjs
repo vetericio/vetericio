@@ -20,6 +20,10 @@ let programa = outputText
   .replace(
     'import { clienteSupabaseUsuario } from "@/lib/permissao-clinica.server";',
     "const clienteSupabaseUsuario = (token) => ({ from: source(token) });",
+  )
+  .replace(
+    'import { listarComprasControladosAutorizadas } from "./compras-controlados.server";',
+    "const listarComprasControladosAutorizadas = (params) => globalThis[Symbol.for('oricse.tests.relatorios.compras')](params);",
   );
 for (const [id, url] of Object.entries(modulos))
   programa = programa.replace(JSON.stringify(id), JSON.stringify(url));
@@ -158,11 +162,32 @@ test("22 consulta fonte com JWT e enriquece apenas vínculos de receitas selecio
         categoria: "receitas",
         enviado_por: "perfil-emissor",
       },
-      { id: "outro-animal", clinica_id: "clinica", entidade_tipo: "animal", mime_type: "application/pdf", entidade_id: "outro", categoria: "receitas", enviado_por: "perfil-animal-incorreto" },
-      { id: "outra-categoria", clinica_id: "clinica", entidade_tipo: "animal", mime_type: "application/pdf", entidade_id: "pet", categoria: "documentos", enviado_por: "perfil-categoria-incorreta" },
+      {
+        id: "outro-animal",
+        clinica_id: "clinica",
+        entidade_tipo: "animal",
+        mime_type: "application/pdf",
+        entidade_id: "outro",
+        categoria: "receitas",
+        enviado_por: "perfil-animal-incorreto",
+      },
+      {
+        id: "outra-categoria",
+        clinica_id: "clinica",
+        entidade_tipo: "animal",
+        mime_type: "application/pdf",
+        entidade_id: "pet",
+        categoria: "documentos",
+        enviado_por: "perfil-categoria-incorreta",
+      },
     ],
     oricse_pessoas: [
-      { user_id: "perfil-emissor", nome_completo: "Veterinário emissor", crmv: "123", crmv_uf: "mg" },
+      {
+        user_id: "perfil-emissor",
+        nome_completo: "Veterinário emissor",
+        crmv: "123",
+        crmv_uf: "mg",
+      },
       { user_id: "perfil-outra-clinica", nome_completo: "Não mostrar", crmv: "999", crmv_uf: "MG" },
     ],
     oricse_animal_registros_extra: [
@@ -182,7 +207,10 @@ test("22 consulta fonte com JWT e enriquece apenas vínculos de receitas selecio
   assert.equal(emitida[12], "08/02/2026");
   assert.ok(relatorio.tabelas[0].linhas.every((r) => r[13] === "05/01/2031"));
   assert.ok(relatorio.tabelas[0].pdfReceitas.some(({ documentoId }) => documentoId === "receita"));
-  assert.doesNotMatch(JSON.stringify(relatorio), /Pet alheio|Não enviar|Não mostrar|perfil-emissor/);
+  assert.doesNotMatch(
+    JSON.stringify(relatorio),
+    /Pet alheio|Não enviar|Não mostrar|perfil-emissor/,
+  );
   assert.equal(consultas[0].principal, "jwt-ficticio");
   const consultasPerfil = consultas.filter((r) => r.tabela === "oricse_pessoas");
   assert.equal(consultasPerfil.length, 1);
@@ -190,7 +218,9 @@ test("22 consulta fonte com JWT e enriquece apenas vínculos de receitas selecio
     ["select", "user_id,nome_completo,crmv,crmv_uf"],
     ["in", "user_id", ["perfil-emissor"]],
   ]);
-  for (const { principal, tabela, operacoes } of consultas.slice(1).filter((r) => r.tabela !== "oricse_pessoas")) {
+  for (const { principal, tabela, operacoes } of consultas
+    .slice(1)
+    .filter((r) => r.tabela !== "oricse_pessoas")) {
     assert.equal(principal, "servico");
     assert.ok(
       operacoes.some(
@@ -226,9 +256,28 @@ test("23 filtra no dia de São Paulo, não inclui outra clínica nem exagera em 
     ],
     oricse_portal_documentos: new Error("erro privado da consulta"),
   });
+  const comprasChave = Symbol.for("oricse.tests.relatorios.compras");
+  globalThis[comprasChave] = async (params) => {
+    assert.deepEqual(params, entrada);
+    return [
+      {
+        dataCompra: "2026-01-04",
+        produtoNome: "Produto fictício",
+        quantidade: 8,
+        fornecedor: "Fornecedor Teste",
+        notaFiscal: "NF 12",
+        lote: "LT1",
+        autorNome: "Equipe Teste",
+        status: "completo",
+      },
+    ];
+  };
+  t.after(() => delete globalThis[comprasChave]);
   const relatorio = await gerarRelatorioDocumentos({ ...entrada, codigo: "23" });
-  assert.equal(relatorio.tabelas[0].linhas.length, 2);
-  assert.ok(relatorio.tabelas[0].linhas.every(([data]) => data === "10/01/2026"));
+  assert.equal(relatorio.indicadores[0].valor, 1);
+  assert.equal(relatorio.tabelas[0].linhas[0][0], "04/01/2026");
+  assert.equal(relatorio.tabelas[1].linhas.length, 2);
+  assert.ok(relatorio.tabelas[1].linhas.every(([data]) => data === "10/01/2026"));
   assert.equal(consultas.length, 1);
   assert.equal(consultas[0].principal, "jwt-ficticio");
   await assert.rejects(() => gerarRelatorioDocumentos({ ...entrada, codigo: "24" }), {

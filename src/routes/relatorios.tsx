@@ -1,6 +1,7 @@
 import { AVISO_PILOTO_RELATORIOS, clinicaNoPilotoRelatorios } from "@/lib/relatorios-acesso";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { ComprasControlados } from "@/components/ComprasControlados";
 import { BarChart3 } from "lucide-react";
 import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,6 +98,7 @@ function Relatorios() {
             clinicaId={clinicaId}
             podeVincular={pode("caixa.financeiro.gerenciar")}
             podeBaixarReceitas={atual === "22" && pode("consultorio.atendimentos")}
+            podeRegistrarCompra={atual === "23" && pode("estoque.movimentar")}
           />
           <details className="rounded-xl border bg-card p-4">
             <summary className="cursor-pointer font-semibold">Catálogo dos 30 relatórios</summary>
@@ -143,11 +145,13 @@ function Painel({
   clinicaId,
   podeVincular,
   podeBaixarReceitas,
+  podeRegistrarCompra,
 }: {
   codigo: CodigoRelatorio;
   clinicaId: string;
   podeVincular: boolean;
   podeBaixarReceitas: boolean;
+  podeRegistrarCompra: boolean;
 }) {
   const hoje = diaNoFuso(new Date().toISOString());
   const [inicio, setInicio] = useState(hoje.slice(0, 7) + "-01");
@@ -161,6 +165,9 @@ function Painel({
   const [erro, setErro] = useState("");
   const [versao, setVersao] = useState(0);
   const [baixandoReceita, setBaixandoReceita] = useState(false);
+  const [visaoControlados, setVisaoControlados] = useState<"relatorio" | "registro" | "pendencias">(
+    "relatorio",
+  );
 
   async function baixarReceita(documentoId: string) {
     if (!podeBaixarReceitas || baixandoReceita) return;
@@ -221,87 +228,123 @@ function Painel({
       className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6"
       aria-label={titulo(codigo)}
     >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void carregar(inicio, fim);
-        }}
-        className="flex flex-wrap items-end gap-3"
-      >
-        <label className="text-sm font-semibold">
-          De
-          <input
-            className={controle}
-            type="date"
-            value={inicio}
-            required
-            disabled={ocupado}
-            onChange={(e) => setInicio(e.target.value)}
-          />
-        </label>
-        <label className="text-sm font-semibold">
-          Até
-          <input
-            className={controle}
-            type="date"
-            value={fim}
-            required
-            min={inicio}
-            disabled={ocupado}
-            onChange={(e) => setFim(e.target.value)}
-          />
-        </label>
-        <button className={botao} type="submit" disabled={ocupado}>
-          {ocupado ? "Consultando…" : "Consultar"}
-        </button>
-      </form>
-      {codigo === "07" && (
-        <Link to="/orcamento-venda-expressa" className="inline-flex text-sm text-primary underline">
-          Abrir tela de orçamentos
-        </Link>
+      {codigo === "23" && (
+        <nav aria-label="Compras de controlados" className="flex flex-wrap gap-2">
+          {(
+            [
+              ["relatorio", "Consultar relatório"],
+              ...(podeRegistrarCompra ? [["registro", "Registrar compra"] as const] : []),
+              ["pendencias", "Pendências"],
+            ] as const
+          ).map(([id, texto]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={visaoControlados === id}
+              onClick={() => setVisaoControlados(id)}
+              className={`min-h-10 rounded-lg border px-3 py-2 text-sm font-semibold ${visaoControlados === id ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
+            >
+              {texto}
+            </button>
+          ))}
+        </nav>
       )}
-      {codigo === "07" && podeVincular && (
-        <VincularVenda
+      {codigo === "23" && visaoControlados !== "relatorio" ? (
+        <ComprasControlados
+          key={visaoControlados}
           clinicaId={clinicaId}
-          onVinculado={() => resultado && void carregar(resultado.inicio, resultado.fim)}
+          podeEditar={podeRegistrarCompra}
+          modo={visaoControlados}
+          onSalva={() => setResultado(undefined)}
         />
-      )}
-      {erro && (
-        <p role="alert" className="text-sm text-destructive">
-          {erro}
-        </p>
-      )}
-      {ocupado && (
-        <p role="status" className="sr-only">
-          Carregando relatório.
-        </p>
-      )}
-      {resultado && (
+      ) : (
         <>
-          <p role="status" className="text-sm text-muted-foreground">
-            Período consultado: {dataBR(resultado.inicio)} a {dataBR(resultado.fim)}.
-          </p>
-          <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {resultado.dados.indicadores.map((i) => (
-              <div className="rounded-xl border p-3" key={i.rotulo}>
-                <dt className="text-xs text-muted-foreground">{i.rotulo}</dt>
-                <dd className="text-lg font-semibold">{i.valor}</dd>
-              </div>
-            ))}
-          </dl>
-          {resultado.dados.notas.map((n) => (
-            <p key={n} className="text-sm text-muted-foreground">
-              {n}
-            </p>
-          ))}
-          {resultado.dados.tabelas.map((t) => (
-            <Tabela
-              key={`${versao}:${t.titulo}`}
-              tabela={t}
-              baixarReceita={podeBaixarReceitas ? baixarReceita : undefined}
-              baixandoReceita={baixandoReceita}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void carregar(inicio, fim);
+            }}
+            className="flex flex-wrap items-end gap-3"
+          >
+            <label className="text-sm font-semibold">
+              De
+              <input
+                className={controle}
+                type="date"
+                value={inicio}
+                required
+                disabled={ocupado}
+                onChange={(e) => setInicio(e.target.value)}
+              />
+            </label>
+            <label className="text-sm font-semibold">
+              Até
+              <input
+                className={controle}
+                type="date"
+                value={fim}
+                required
+                min={inicio}
+                disabled={ocupado}
+                onChange={(e) => setFim(e.target.value)}
+              />
+            </label>
+            <button className={botao} type="submit" disabled={ocupado}>
+              {ocupado ? "Consultando…" : "Consultar"}
+            </button>
+          </form>
+          {codigo === "07" && (
+            <Link
+              to="/orcamento-venda-expressa"
+              className="inline-flex text-sm text-primary underline"
+            >
+              Abrir tela de orçamentos
+            </Link>
+          )}
+          {codigo === "07" && podeVincular && (
+            <VincularVenda
+              clinicaId={clinicaId}
+              onVinculado={() => resultado && void carregar(resultado.inicio, resultado.fim)}
             />
-          ))}
+          )}
+          {erro && (
+            <p role="alert" className="text-sm text-destructive">
+              {erro}
+            </p>
+          )}
+          {ocupado && (
+            <p role="status" className="sr-only">
+              Carregando relatório.
+            </p>
+          )}
+          {resultado && (
+            <>
+              <p role="status" className="text-sm text-muted-foreground">
+                Período consultado: {dataBR(resultado.inicio)} a {dataBR(resultado.fim)}.
+              </p>
+              <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {resultado.dados.indicadores.map((i) => (
+                  <div className="rounded-xl border p-3" key={i.rotulo}>
+                    <dt className="text-xs text-muted-foreground">{i.rotulo}</dt>
+                    <dd className="text-lg font-semibold">{i.valor}</dd>
+                  </div>
+                ))}
+              </dl>
+              {resultado.dados.notas.map((n) => (
+                <p key={n} className="text-sm text-muted-foreground">
+                  {n}
+                </p>
+              ))}
+              {resultado.dados.tabelas.map((t) => (
+                <Tabela
+                  key={`${versao}:${t.titulo}`}
+                  tabela={t}
+                  baixarReceita={podeBaixarReceitas ? baixarReceita : undefined}
+                  baixandoReceita={baixandoReceita}
+                />
+              ))}
+            </>
+          )}
         </>
       )}
     </section>
