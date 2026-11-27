@@ -1,5 +1,5 @@
 import { createFileRoute, useLocation } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
   BedDouble,
@@ -19,7 +19,7 @@ import { usePermissoes } from "@/hooks/usePermissoes";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/hotelzinho")({ component: Hotelzinho });
-const cacheHotel = new Map<string, {em:number; dados:any[]}>();
+
 
 type Tutor = { id: string; nome: string; telefone: string | null };
 type Animal = { id: string; nome: string; tutor_id: string; especie: string };
@@ -175,16 +175,14 @@ function Hotelzinho() {
   const podeOperar = adminGlobal || pode("hotelzinho.operar") || pode("hotelzinho.gerenciar");
   const podeGerenciar = adminGlobal || pode("hotelzinho.gerenciar");
 
-  async function carregar(forcar = false) {
-    if (!clinicaId) return;
-    const salvo = cacheHotel.get(clinicaId);
-    if (salvo) {
-      const [t,a,ac,e,c,at,x] = salvo.dados;
-      setTutores(t);setAnimais(a);setAcomodacoes(ac);setEstadias(e);setCuidados(c);setAtualizacoes(at);setExtras(x);
-    }
-    setCarregando(!salvo);
-    setAtualizando(Boolean(salvo));
-    if (!forcar && salvo && Date.now()-salvo.em<30000) { setAtualizando(false); return; }
+  const clinicaAtual = useRef(clinicaId);
+  clinicaAtual.current = clinicaId;
+  const cargaHotel = useRef(0);
+  const [clinicaCarregada, setClinicaCarregada] = useState("");
+  async function carregar() {
+    if (!clinicaId || clinicaAtual.current !== clinicaId) return;
+    const rodada = ++cargaHotel.current;
+    setAtualizando(true);
     setErro("");
     try {
     const [tutoresR, animaisR, acomodacoesR, estadiasR, cuidadosR, atualizacoesR, extrasR] =
@@ -215,6 +213,7 @@ function Hotelzinho() {
           .limit(100),
         db.from("oricse_hotel_extras").select("id,estadia_id,categoria,descricao,quantidade,valor_unitario_centavos,created_at").eq("clinica_id",clinicaId).order("created_at",{ascending:false}),
       ]);
+    if (rodada !== cargaHotel.current || clinicaAtual.current !== clinicaId) return;
     const falha = [tutoresR, animaisR, acomodacoesR, estadiasR, cuidadosR, atualizacoesR, extrasR].find(
       (r) => r.error,
     );
@@ -231,10 +230,11 @@ function Hotelzinho() {
     setCuidados((cuidadosR.data || []) as Cuidado[]);
     setAtualizacoes((atualizacoesR.data || []) as Atualizacao[]);
     setExtras(extrasR.data || []);
-    cacheHotel.set(clinicaId,{em:Date.now(),dados:[tutoresR.data||[],animaisR.data||[],acomodacoesR.data||[],estadiasR.data||[],cuidadosR.data||[],atualizacoesR.data||[],extrasR.data||[]]});
+    setClinicaCarregada(clinicaId);
     setCarregando(false);
     setAtualizando(false);
     } catch (error) {
+      if (rodada !== cargaHotel.current || clinicaAtual.current !== clinicaId) return;
       console.error("Erro de carregamento do Hotelzinho:", error);
       setErro("Falha de conexão ao carregar o Hotelzinho. Tente novamente.");
       setCarregando(false);
@@ -249,7 +249,13 @@ function Hotelzinho() {
       setCarregando(false);
       return;
     }
+    setCarregando(true);
+    setEstadiaSelecionada("");
+    setEstadiaExtraId("");
+    setMostrarReserva(false);
+    setFormReserva(novoFormulario());
     void carregar();
+    return () => { cargaHotel.current += 1; };
     // carregar() deve atualizar a mesma clínica ativa já resolvida pelo hook.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carregandoPermissoes, clinicaId]);
@@ -328,8 +334,7 @@ function Hotelzinho() {
     toast.success("Reserva criada.");
     setMostrarReserva(false);
     setFormReserva(novoFormulario());
-    cacheHotel.delete(clinicaId!);
-    await carregar(true);
+    await carregar();
   }
 
   async function adicionarExtra(evento:FormEvent<HTMLFormElement>) {
@@ -348,25 +353,38 @@ function Hotelzinho() {
     await carregar();
   }
 
-  async function fazerCheckin(estadia: Estadia) {
-    if (!clinicaId || !podeOperar) return;
-    const { data: usuario } = await supabase.auth.getUser();
-    const { error } = await db
-      .from("oricse_hotel_estadias")
-      .update({
-        status: "hospedado",
-        checkin_em: new Date().toISOString(),
-        checkin_por: usuario.user?.id || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", estadia.id)
-      .eq("clinica_id", clinicaId)
-      .eq("status", "reservada");
-    if (error) return toast.error(`Não foi possível registrar o check-in: ${error.message}`);
-    toast.success(`Check-in de ${petNome(estadia)} registrado.`);
-    await carregar();
+  const movimentando = useRef(false);
+  async function alterarEstadia(estadia: Estadia, destino: "hospedado" | "cancelada") {
+    if (!clinicaId || !podeOperar || movimentando.current) return;
+    movimentando.current = true;
+    setSalvando(true);
+    try {
+      const agora = new Date().toISOString();
+      const { data: usuario } = await supabase.auth.getUser();
+      if (!usuario.user?.id || clinicaAtual.current !== clinicaId) throw new Error("Confira sua sessão e a clínica selecionada.");
+      const anterior = "reservada";
+      const { data, error } = await db.from("oricse_hotel_estadias").update({
+        status: destino,
+        updated_at: agora,
+        ...(destino === "hospedado" ? { checkin_em: agora, checkin_por: usuario.user.id } : {}),
+      }).eq("id", estadia.id).eq("clinica_id", clinicaId).eq("status", anterior)
+        .select("id").maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) {
+        toast.error("A estadia mudou ou não está mais disponível. Confira a lista antes de tentar novamente.");
+        return;
+      }
+      toast.success(destino === "hospedado" ? "Check-in registrado." : "Reserva cancelada.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a estadia.");
+    } finally {
+      await carregar();
+      movimentando.current = false;
+      setSalvando(false);
+    }
   }
 
+  const fazerCheckin = (estadia: Estadia) => alterarEstadia(estadia, "hospedado");
   async function fazerCheckout(estadia: Estadia) {
     if (!clinicaId || !podeOperar) return;
     const { data: usuario } = await supabase.auth.getUser();
@@ -397,18 +415,7 @@ function Hotelzinho() {
     await carregar();
   }
 
-  async function cancelarReserva(estadia: Estadia) {
-    if (!clinicaId || !podeOperar) return;
-    const { error } = await db
-      .from("oricse_hotel_estadias")
-      .update({ status: "cancelada", updated_at: new Date().toISOString() })
-      .eq("id", estadia.id)
-      .eq("clinica_id", clinicaId)
-      .eq("status", "reservada");
-    if (error) return toast.error(`Não foi possível cancelar: ${error.message}`);
-    toast.success("Reserva cancelada.");
-    await carregar();
-  }
+  const cancelarReserva = (estadia: Estadia) => alterarEstadia(estadia, "cancelada");
 
   async function salvarCuidado(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -535,13 +542,13 @@ function Hotelzinho() {
     );
   }
 
-  if (carregandoPermissoes || (carregando && !cacheHotel.has(clinicaId || "")))
+  if (carregandoPermissoes || (clinicaId && clinicaCarregada !== clinicaId && (!erro || carregando)))
     return (
       <main className="mx-auto max-w-6xl p-5 text-sm text-muted-foreground">
         Carregando Hotelzinho…
       </main>
     );
-  if (!erro && !adminGlobal && !pode("hotelzinho.visualizar"))
+  if (!adminGlobal && !pode("hotelzinho.visualizar"))
     return (
       <main className="mx-auto max-w-3xl p-6">
         <div className={painel}>Você não tem permissão para acessar o Hotelzinho.</div>
@@ -560,7 +567,7 @@ function Hotelzinho() {
         </div>
         <button
           type="button"
-          onClick={() => void carregar(true)} disabled={atualizando}
+          onClick={() => void carregar()} disabled={atualizando}
           className="inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium hover:bg-secondary"
         >
           <RefreshCw className="h-4 w-4" /> Atualizar
@@ -576,7 +583,7 @@ function Hotelzinho() {
         </div>
       )}
 
-      <div className="space-y-5">
+      {clinicaId && clinicaCarregada === clinicaId && <div className="space-y-5">
         <div className="min-w-0 space-y-5">
           {aba === "painel" && (
             <section className="space-y-4">
@@ -1228,7 +1235,7 @@ function Hotelzinho() {
             </section>
           )}
         </div>
-      </div>
+      </div>}
     </main>
   );
 }
