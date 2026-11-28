@@ -1,3 +1,4 @@
+import { MostrarPromocaoPerfisNaHome } from "@/components/MostrarPromocaoPerfisNaHome";
 import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { useState, type ReactNode } from "react";
 import { ORICSTUDIO_LOGO } from "@/lib/oricstudio-logo";
@@ -72,7 +73,7 @@ function PaginaInicial() {
   const resultado = Route.useLoaderData();
   const busca = useLocation({ select: (location) => location.searchStr });
   const bootstrap = "visual" in resultado ? <script id="oricse-visual-bootstrap" type="application/json" dangerouslySetInnerHTML={{ __html: JSON.stringify(resultado.visual).replace(/</g, "\\u003c") }} /> : null;
-  if (resultado.tipo === "plataforma") return <>{bootstrap}<PaginaInicialPlataforma /></>;
+  if (resultado.tipo === "plataforma") return <>{bootstrap}<PaginaInicialPlataforma /><MostrarPromocaoPerfisNaHome /></>;
 
   if (resultado.tipo === "clinica") {
     const { slug, site } = resultado;

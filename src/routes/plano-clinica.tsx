@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, BadgeCheck, CalendarDays, LockKeyhole, RefreshCw, ShieldCheck, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { parseCotaPerfisClinica, type CotaPerfisClinica } from "@/lib/cota-perfis-clinica";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/plano-clinica")({
   head: () => ({ meta: [{ title: "Meu plano — ORICSE" }] }),
@@ -29,6 +30,7 @@ type Resumo = {
 function PlanoClinica() {
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [cota, setCota] = useState<CotaPerfisClinica | null>(null);
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
   const [mostrar, setMostrar] = useState<"todos" | "liberados" | "bloqueados">("todos");
@@ -36,6 +38,7 @@ function PlanoClinica() {
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro("");
+    setCota(null);
     try {
       const { data: user, error: erroAuth } = await supabase.auth.getUser();
       if (erroAuth || !user.user?.id) throw new Error("Faça login para consultar seu plano.");
@@ -45,6 +48,8 @@ function PlanoClinica() {
       if (error) throw error;
       if (!data?.clinica?.id) throw new Error("Não foi possível identificar a clínica.");
       setResumo(data as Resumo);
+      const resultado = await (supabaseBanco as any).rpc("oricse_cota_perfis_clinica", { p_clinica_id: data.clinica.id });
+      if (!resultado.error) setCota(parseCotaPerfisClinica(resultado.data));
     } catch (e) {
       setResumo(null);
       setErro(e instanceof Error ? e.message : "Não foi possível consultar o plano.");
@@ -116,8 +121,9 @@ function PlanoClinica() {
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl bg-secondary/40 p-4">
             <Users size={20} className="text-primary"/>
-            <p className="mt-2 text-xl font-black">{resumo.clinica.limite_usuarios ?? resumo.plano?.usuarios_inclusos ?? "—"}</p>
-            <p className="text-xs text-muted-foreground">Limite de usuários</p>
+            <p className="mt-2 text-xl font-black">{cota?.ilimitado ? "Ilimitados" : cota?.limite ?? "—"}</p>
+            <p className="text-xs text-muted-foreground">Limite de perfis da equipe</p>
+            {!!cota?.bonus_perfis && <p className="mt-1 text-xs font-semibold text-primary">Inclui {cota.bonus_perfis} perfis promocionais</p>}
           </div>
           <div className="rounded-xl bg-secondary/40 p-4">
             <CalendarDays size={20} className="text-primary"/>
@@ -136,7 +142,7 @@ function PlanoClinica() {
           </div>
         </div>
         <p className="mt-4 text-sm text-muted-foreground">
-          Cada usuário contratado dá direito a uma agenda. Para solicitar agendas adicionais, escreva para <a className="font-semibold text-primary underline" href="mailto:atendimento@oricse.com.br">atendimento@oricse.com.br</a> ou fale com seu consultor.
+          As agendas seguem a quantidade contratada, sem contar os perfis recebidos como bônus. Para solicitar agendas adicionais, escreva para <a className="font-semibold text-primary underline" href="mailto:atendimento@oricse.com.br">atendimento@oricse.com.br</a> ou fale com seu consultor.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
           Esta tela apresenta os limites do plano, não as permissões individuais de cada funcionário.
