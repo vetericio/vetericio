@@ -1,4 +1,4 @@
-import { emailAtendimentoOricse, whatsappAtendimentoOricse } from "@/lib/contato-oricse";
+import { emailAtendimentoOricse, ORICSE_WHATSAPP_EXIBICAO, whatsappAtendimentoOricse } from "@/lib/contato-oricse";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2, Clock3, Mail, MessageCircle, ShieldCheck, CalendarCheck2, Headset } from "lucide-react";
 
@@ -53,7 +53,7 @@ function ContratacaoRecebida() {
               {pedidoCurto && <p className="mt-3 text-xs font-semibold text-[#8A5668]">Solicitação: {pedidoCurto}</p>}
               <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
                 <a href={emailAtendimentoOricse("Atendimento ORICSE - Contratação")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#703047] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#542235]"><Mail size={18}/> atendimento@oricse.com.br</a>
-                <a href={whatsappAtendimentoOricse("Olá! Preciso de ajuda com minha contratação na ORICSE.")} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#703047] bg-white px-5 py-3 text-sm font-bold text-[#703047] transition hover:bg-[#FAF2F4]"><MessageCircle size={18}/> WhatsApp (31) 99551-2795</a>
+                <a href={whatsappAtendimentoOricse("Olá! Preciso de ajuda com minha contratação na ORICSE.")} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#703047] bg-white px-5 py-3 text-sm font-bold text-[#703047] transition hover:bg-[#FAF2F4]"><MessageCircle size={18}/> WhatsApp {ORICSE_WHATSAPP_EXIBICAO}</a>
               </div>
             </div>
           </div>

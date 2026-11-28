@@ -24,7 +24,7 @@ test("mensagens e assuntos com acentos são preservados", () => {
 
 test("recuperação de senha, contratação, Ajuda e exclusão Meta usam os canais oficiais", () => {
   assert.match(read("routes/login.tsx"), /href=\{whatsappAtendimentoOricse\("Olá, preciso recuperar/);
-  assert.match(read("routes/contratacao-recebida.tsx"), /href=\{whatsappAtendimentoOricse\(/);
+  assert.match(read("routes/contratacao-recebida.tsx"), /<a href=\{whatsappAtendimentoOricse\([^)]*\)\}[^>]*><MessageCircle[^>]*\/> WhatsApp \{ORICSE_WHATSAPP_EXIBICAO\}<\/a>/);
   assert.match(read("routes/contratacao-recebida.tsx"), /href=\{emailAtendimentoOricse\(/);
   assert.match(read("components/ManualSistemaMenu.tsx"), /<ContatosAtendimentoOricse /);
   assert.doesNotMatch(read("lib/oricstudio-meta-data-deletion.server.ts"), /vetericio@gmail\.com/);
