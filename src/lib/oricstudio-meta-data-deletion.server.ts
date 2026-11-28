@@ -1,3 +1,4 @@
+import { emailAtendimentoOricse, ORICSE_EMAIL_ATENDIMENTO } from "./contato-oricse";
 import { createHash, randomBytes } from "node:crypto";
 
 const BASE_URL = "https://oricse.com.br";
@@ -172,7 +173,7 @@ export function metaDataDeletionInstructions() {
     <h1>Exclusão de dados do OricStúdio</h1>
     <p>Para solicitar a exclusão dos dados Meta associados à sua conta, remova o OricStúdio nas configurações da sua conta Meta. A Meta enviará o pedido assinado para esta aplicação.</p>
     <p>O OricStúdio remove as credenciais, a conexão da conta profissional e os registros de auditoria dessa conexão. Dados clínicos e financeiros da clínica não são apagados por este callback.</p>
-    <p>Se precisar de ajuda, escreva para <a href="mailto:vetericio@gmail.com">vetericio@gmail.com</a>.</p>
+    <p>Se precisar de ajuda, escreva para <a href="${emailAtendimentoOricse()}">${ORICSE_EMAIL_ATENDIMENTO}</a>.</p>
   </body>
 </html>`, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }

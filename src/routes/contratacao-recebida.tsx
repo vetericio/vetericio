@@ -1,3 +1,4 @@
+import { emailAtendimentoOricse, whatsappAtendimentoOricse } from "@/lib/contato-oricse";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2, Clock3, Mail, MessageCircle, ShieldCheck, CalendarCheck2, Headset } from "lucide-react";
 
@@ -51,8 +52,8 @@ function ContratacaoRecebida() {
               <p className="mt-2 text-sm leading-6 text-[#6B5961]">Se precisar de qualquer coisa enquanto aguarda, estamos à disposição por e-mail ou WhatsApp.</p>
               {pedidoCurto && <p className="mt-3 text-xs font-semibold text-[#8A5668]">Solicitação: {pedidoCurto}</p>}
               <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
-                <a href="mailto:atendimento@oricse.com.br?subject=Atendimento%20ORICSE%20-%20Contrata%C3%A7%C3%A3o" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#703047] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#542235]"><Mail size={18}/> atendimento@oricse.com.br</a>
-                <a href="https://wa.me/5531995512795?text=Ol%C3%A1%21%20Preciso%20de%20ajuda%20com%20minha%20contrata%C3%A7%C3%A3o%20na%20ORICSE." target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#703047] bg-white px-5 py-3 text-sm font-bold text-[#703047] transition hover:bg-[#FAF2F4]"><MessageCircle size={18}/> WhatsApp (31) 99551-2795</a>
+                <a href={emailAtendimentoOricse("Atendimento ORICSE - Contratação")} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#703047] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#542235]"><Mail size={18}/> atendimento@oricse.com.br</a>
+                <a href={whatsappAtendimentoOricse("Olá! Preciso de ajuda com minha contratação na ORICSE.")} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#703047] bg-white px-5 py-3 text-sm font-bold text-[#703047] transition hover:bg-[#FAF2F4]"><MessageCircle size={18}/> WhatsApp (31) 99551-2795</a>
               </div>
             </div>
           </div>

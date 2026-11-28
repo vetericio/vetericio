@@ -1,3 +1,5 @@
+import { ContatosAtendimentoOricse } from "@/components/ContatosAtendimentoOricse";
+import { whatsappAtendimentoOricse } from "@/lib/contato-oricse";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { FormEvent, useState } from "react";
@@ -212,7 +214,7 @@ function Login() {
             </label>
 
             <a
-              href="https://wa.me/5531995512795?text=Ol%C3%A1%2C%20preciso%20recuperar%20minha%20senha%20da%20Oricse."
+              href={whatsappAtendimentoOricse("Olá, preciso recuperar minha senha da Oricse.")}
               target="_blank"
               rel="noreferrer"
               className="mt-3 w-fit text-sm font-semibold text-primary underline underline-offset-4"
@@ -232,6 +234,7 @@ function Login() {
                 </>
               )}
             </button>
+            <ContatosAtendimentoOricse className="mt-5 flex flex-wrap justify-center gap-x-3 gap-y-2 text-sm not-italic text-muted-foreground" />
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Ainda não tem um plano?{" "}
               <Link to="/planos" className="font-semibold text-primary hover:underline">
