@@ -1,3 +1,4 @@
+import { ContatosAtendimentoOricse } from "@/components/ContatosAtendimentoOricse";
 import { VERSAO } from "@/lib/versao";
 import type { ReactNode } from "react";
 
@@ -42,6 +43,9 @@ export function RodapeInstitucional({
         Conectividade e Evolução Tecnologia LTDA.
       </p>
       <p>Veterício Serviços Veterinários LTDA.</p>
+      {!linkMarca && !marcaDaClinica && (
+        <ContatosAtendimentoOricse className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 font-medium not-italic text-[#5e4753]" />
+      )}
       <p className={marcaDaClinica ? "mt-1" : "mt-2"}>
         © {new Date().getFullYear()} · Versão {VERSAO}
       </p>

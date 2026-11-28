@@ -1,3 +1,4 @@
+import { ContatosAtendimentoOricse } from "@/components/ContatosAtendimentoOricse";
 import { useState } from "react";
 import { BookOpen, ChevronDown, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -108,6 +109,7 @@ export function ManualSistemaMenu({ admin }: { admin: boolean }) {
               {ocupado ? "Baixando manual…" : "Manual do Sistema"}
             </button>
           )}
+          <ContatosAtendimentoOricse className="flex flex-col gap-2 px-2 pt-1 text-sm font-medium not-italic" />
           {admin && (
             <div className="px-2 pb-1 text-xs">
               <button
