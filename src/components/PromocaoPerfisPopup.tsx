@@ -80,15 +80,14 @@ export function PromocaoPerfisPopup({ disponivel }: PromocaoPerfisPopupProps) {
               aria-hidden="true"
               className="pointer-events-none absolute -right-24 -top-28 -z-10 size-[280px] rounded-full border border-[#ddab8e]/30 shadow-[0_0_0_20px_#ddab8e1f,0_0_0_42px_#ddab8e10]"
             />
-            <Dialog.Close asChild>
-              <button
-                type="button"
-                aria-label="Fechar oferta"
-                className="absolute right-3 top-3 inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-[#FBF7F2]/35 text-[#FBF7F2] hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FBF7F2]"
-              >
-                <X size={20} aria-hidden="true" />
-              </button>
-            </Dialog.Close>
+            <button
+              type="button"
+              aria-label="Fechar oferta"
+              onClick={() => setAberto(false)}
+              className="absolute right-3 top-3 inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-[#FBF7F2]/35 text-[#FBF7F2] hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FBF7F2]"
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pr-12">
               <span className="inline-flex items-center gap-2 text-[13px] font-semibold tracking-[.18em]">
                 <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#FBF7F2]">
