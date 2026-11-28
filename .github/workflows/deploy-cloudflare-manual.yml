@@ -53,7 +53,20 @@ jobs:
       - name: Build production Worker
         env:
           VITE_ORICSE_BUILD_ID: ${{ github.sha }}
+          ORICSE_RELEASE_BUILD: "1"
         run: npm run build
+      - name: Validate packaged Worker release identifier
+        env:
+          EXPECTED_BUILD: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          const expected = process.env.EXPECTED_BUILD;
+          const wrapper = readFileSync(".output/server/oricse-worker-entry.ts", "utf8");
+          if (!/^[0-9a-f]{40}$/.test(expected) || !wrapper.split("\n").includes("const buildId = " + JSON.stringify(expected) + ";")) {
+            throw new Error("Packaged Worker lacks the immutable build identifier");
+          }
+          NODE
       - name: Validate Durable Object configuration
         run: node scripts/check-worker-coordinator.mjs
       - name: Validate Cloudflare deployment package
