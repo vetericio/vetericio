@@ -1,8 +1,9 @@
 import { KeyRound, Pencil, Trash2, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseBanco } from "@/integrations/supabase/client";
 import { atualizarUsuario, atualizarPerfilPessoa, criarUsuarioClinica, obterPerfilPessoa, redefinirSenhaUsuario, removerUsuarioClinica } from "@/lib/admin-users.functions";
+import { parseCotaPerfisClinica, type CotaPerfisClinica } from "@/lib/cota-perfis-clinica";
 import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
 
 type PapelClinica = "rt" | "veterinario" | "auxiliar_estagiario" | "recepcao";
@@ -103,6 +104,21 @@ function mensagemErroUsuario(error: unknown) {
 }
 
 export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualizarVinculo, onRefresh }: Props) {
+  const [cota, setCota] = useState<{ id: string; valor: CotaPerfisClinica } | null>(null);
+  useEffect(() => {
+    let vigente = true;
+    void (async () => {
+      try {
+        const r = await (supabaseBanco as any).rpc("oricse_cota_perfis_clinica", { p_clinica_id: clinica.id });
+        const valor = r.error ? null : parseCotaPerfisClinica(r.data);
+        if (vigente) setCota(valor ? { id: clinica.id, valor } : null);
+      } catch {
+        if (vigente) setCota(null);
+      }
+    })();
+    return () => { vigente = false; };
+  }, [clinica.id, clinica.limite_usuarios]);
+  const cotaAtual = cota?.id === clinica.id ? cota?.valor : null;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -281,7 +297,7 @@ export function ClinicUsersPanel({ clinica, usuariosDaClinica, perfis, onAtualiz
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-black">Equipe · {clinica.nome}</h2>
-          <p className="text-sm text-muted-foreground">{ativos} de {clinica.limite_usuarios} vagas em uso.</p>
+          <p className="text-sm text-muted-foreground">{cotaAtual?.ilimitado ? `${ativos} perfis ativos · sem limite` : cotaAtual?.limite ? `${ativos} de ${cotaAtual.limite} vagas em uso.` : `${ativos} perfis ativos`}</p>
         </div>
       </div>
       <label className="mt-3 block"><span className="sr-only">Buscar usuário da equipe</span><input value={buscaUsuario} onChange={(e) => setBuscaUsuario(e.target.value)} placeholder="Buscar por usuário, e-mail ou função" className="min-h-10 w-full rounded-lg border bg-slate-50 px-3 text-sm outline-none focus:border-primary" /></label>

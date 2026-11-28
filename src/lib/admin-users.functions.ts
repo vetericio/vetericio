@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
+import { parseCotaPerfisClinica } from "@/lib/cota-perfis-clinica";
 import { cpfValido } from "@/lib/cpf";
 
 const papelSchema = z.enum(["rt", "veterinario", "auxiliar_estagiario", "recepcao"]);
@@ -93,7 +94,16 @@ export const criarUsuarioClinica=createServerFn({method:"POST"}).validator((i:un
   if(existing?.user_id&&existing.user_id!==authUser.id)throw new Error("Este @usuário já está em uso por outra conta.");
   const {data:vinculos,error:vinculosError}=await admin.from("clinica_usuarios").select("clinica_id,ativo").eq("user_id",authUser.id);if(vinculosError)throw new Error(vinculosError.message);
   const vinculoAtual=vinculos?.find((x)=>x.clinica_id===data.clinicaId);if(vinculos?.some((x)=>x.ativo&&x.clinica_id!==data.clinicaId))throw new Error("Esta conta já está vinculada a outra clínica.");
-  if(!vinculoAtual?.ativo){const {count,error}=await admin.from("clinica_usuarios").select("user_id",{count:"exact",head:true}).eq("clinica_id",data.clinicaId).eq("ativo",true);if(error)throw new Error(error.message);if((count||0)>=Number(clinica.limite_usuarios||1))throw new Error(`O limite atual desta clínica é ${clinica.limite_usuarios} usuário(s).`);}
+  if(!vinculoAtual?.ativo){
+    const {data:cotaBruta,error:erroCota}=await (admin as any).rpc("oricse_cota_perfis_clinica",{p_clinica_id:data.clinicaId});
+    const cota=parseCotaPerfisClinica(cotaBruta);
+    if(erroCota||!cota)throw new Error("Não foi possível confirmar a cota de perfis da clínica.");
+    if(!cota.ilimitado){
+      const {count,error}=await admin.from("clinica_usuarios").select("user_id",{count:"exact",head:true}).eq("clinica_id",data.clinicaId).eq("ativo",true);
+      if(error||count===null)throw new Error("Não foi possível conferir os perfis ativos.");
+      if(cota.limite===null||count>=cota.limite)throw new Error(`O limite atual desta clínica é ${cota.limite} usuário(s).`);
+    }
+  }
   const {error:profileError}=await admin.from("app_users").upsert({user_id:authUser.id,username,role:profile?.role||"user",email:data.email.trim().toLowerCase()},{onConflict:"user_id"});if(profileError)throw new Error(profileError.message);
   const {error:pessoaError}=await admin.from("oricse_pessoas").upsert({
     user_id:authUser.id,...pessoaNormalizada,

@@ -1,3 +1,6 @@
+import { BeneficioPromocionalPerfis } from "@/components/OfertaPerfis";
+import { useCampanhaPerfisEquipe } from "@/lib/promocao-perfis-publica";
+import { ofertaDoPlano } from "@/lib/promocao-perfis-ui";
 import { RodapeInstitucional } from "@/components/RodapeInstitucional";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -58,11 +61,11 @@ const PERGUNTAS_FREQUENTES = [
   },
   {
     pergunta: "Quantos profissionais podem usar o sistema?",
-    resposta: "Cada plano já inclui uma quantidade de usuários para sua equipe. Precisa de mais profissionais? Você pode ampliar os acessos conforme seu negócio cresce, contratando usuários adicionais por um valor extra, de acordo com as condições comerciais vigentes. Assim, sua equipe tem espaço para crescer sem precisar trocar de sistema.",
+    resposta: "Cada plano tem suas próprias condições para perfis de acesso. A quantidade incluída e o preço de perfis adicionais, quando houver, são confirmados na contratação.",
   },
   {
     pergunta: "Quantas agendas estão incluídas no plano?",
-    resposta: "A quantidade de agendas é igual à quantidade de usuários contratados: 1 usuário = 1 agenda. Para solicitar agendas adicionais, entre em contato com atendimento@oricse.com.br ou com seu consultor.",
+    resposta: "As agendas seguem as condições do plano. Para confirmar a quantidade disponível ou solicitar agendas adicionais, entre em contato com atendimento@oricse.com.br ou com seu consultor.",
   },
   {
     pergunta: "O Portal do Tutor está incluído?",
@@ -92,6 +95,7 @@ const PERGUNTAS_FREQUENTES = [
 ] as const;
 
 function Planos() {
+  const campanhaPerfis = useCampanhaPerfisEquipe();
   const [planos, setPlanos] = useState<Plano[]>(planosIniciais);
   const { ciclo = "mensal" } = Route.useSearch();
   const [regras, setRegras] = useState<Map<string, boolean>>(new Map());
@@ -224,6 +228,8 @@ function Planos() {
             {planos.map((p) => {
               const destaque = p.codigo === "profissional-2026";
               const master = p.codigo === "master-2026";
+              const ofertaPerfis = ofertaDoPlano(p.codigo, p.usuarios_inclusos, campanhaPerfis.isError ? undefined : campanhaPerfis.data);
+              const promocaoPerfis = ofertaPerfis.tipo !== "padrao" ? ofertaPerfis : null;
               const preco = ciclo === "mensal" ? p.preco_mensal : p.preco_anual;
               const detalhe = detalhesPlano[p.codigo] || { ideal: "Negócio pet", chamada: p.descricao || "", destaques: (p.itens || []).slice(0, 4) };
               return (
@@ -241,7 +247,13 @@ function Planos() {
 
                   <div className="mt-5 grid grid-cols-2 gap-2">
                     <div className="rounded-2xl bg-[#f8efeb] px-3 py-3"><span className="block text-[10px] font-extrabold uppercase tracking-[.13em] text-[#9b6170]">Animais</span><strong className="mt-1 block text-sm">{LIMITE_ANIMAIS[p.codigo] || "Consulte"}</strong></div>
-                    <div className="rounded-2xl bg-[#f8efeb] px-3 py-3"><span className="block text-[10px] font-extrabold uppercase tracking-[.13em] text-[#9b6170]">Equipe e agendas</span><strong className="mt-1 block text-sm">{p.usuarios_inclusos} usuário{p.usuarios_inclusos !== 1 ? "s" : ""} · {p.usuarios_inclusos} agenda{p.usuarios_inclusos !== 1 ? "s" : ""}</strong></div>
+                    {promocaoPerfis ? (
+                      <div className="rounded-2xl bg-[#f8efeb] px-3 py-3">
+                        <span className="block text-[10px] font-extrabold uppercase tracking-[.13em] text-[#9b6170]">Agendas</span>
+                        <strong className="mt-1 block text-sm">{p.usuarios_inclusos} agenda{p.usuarios_inclusos !== 1 ? "s" : ""} no plano</strong>
+                      </div>
+                    ) : <div className="rounded-2xl bg-[#f8efeb] px-3 py-3"><span className="block text-[10px] font-extrabold uppercase tracking-[.13em] text-[#9b6170]">Equipe e agendas</span><strong className="mt-1 block text-sm">{p.usuarios_inclusos} usuário{p.usuarios_inclusos !== 1 ? "s" : ""} · {p.usuarios_inclusos} agenda{p.usuarios_inclusos !== 1 ? "s" : ""}</strong></div>}
+                    {promocaoPerfis && <div className="col-span-2"><BeneficioPromocionalPerfis oferta={promocaoPerfis}/></div>}
                   </div>
 
                   <ul className="mt-6 space-y-3 text-sm leading-5 text-[#5e3f4b]">

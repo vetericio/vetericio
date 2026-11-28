@@ -5,6 +5,9 @@ import { ArrowLeft, BadgeCheck, Check, ChevronLeft, ChevronRight, CreditCard, Ch
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase, supabaseBanco } from "@/integrations/supabase/client";
+import { BeneficioPromocionalPerfis } from "@/components/OfertaPerfis";
+import { useCampanhaPerfisEquipe } from "@/lib/promocao-perfis-publica";
+import { distribuirPerfis, ofertaDoPlano, planoParticipanteDaCampanha } from "@/lib/promocao-perfis-ui";
 import { cpfValido } from "@/lib/cpf";
 
 export const Route = createFileRoute("/contratar")({
@@ -202,6 +205,12 @@ function Contratar() {
   const [ciclo,setCiclo]=useState<CicloContratacao>(cicloInicial);
   const [modoRenovacao,setModoRenovacao]=useState<"automatica_cartao"|"manual">("automatica_cartao");
   const [etapa, setEtapa] = useState(1);
+  const participaCampanha = !ehTesteGratis && planoParticipanteDaCampanha(plano);
+  const campanhaPerfis = useCampanhaPerfisEquipe(participaCampanha && etapa <= 3);
+  const [ofertaConfirmadaNoPedido, setOfertaConfirmadaNoPedido] = useState("");
+  const [pedidoDivergente, setPedidoDivergente] = useState(false);
+  const [validandoOfertaEquipe, setValidandoOfertaEquipe] = useState(false);
+  const guardandoPedido = useRef(false);
   const operacaoMenuRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -298,7 +307,7 @@ function Contratar() {
   }, [pedidoRetorno, retornoPagamento]);
 
   async function abrirCheckout(id: string) {
-    if (!id || abrindoCheckout) return;
+    if (!id || abrindoCheckout || pedidoDivergente) return;
     // Um cupom que zera o pedido não deve acionar o Mercado Pago.
     if (pedido?.status === "isento_aguardando_aprovacao") {
       const destino = new URL("/contratacao-recebida", window.location.origin);
@@ -392,8 +401,13 @@ function Contratar() {
 
 
   const perfisIncluidos = Math.max(1, Number(configPlano?.usuarios_inclusos) || 1);
-  const quantidadeUsuarios = ehTesteGratis ? 1 : Math.max(1, Number(dados.quantidade_usuarios) || 1);
-  const perfisExtras = ehTesteGratis ? 0 : Math.max(0, quantidadeUsuarios - perfisIncluidos);
+  const ofertaEquipe = ofertaDoPlano(plano, perfisIncluidos, campanhaPerfis.data);
+  const cotacaoEquipePendente = participaCampanha && (campanhaPerfis.isPending || campanhaPerfis.isError);
+  const quantidadeInformada = Number(dados.quantidade_usuarios);
+  const quantidadeUsuarios = ehTesteGratis ? 1 : ofertaEquipe.tipo === "ilimitado" ? perfisIncluidos
+    : Number.isSafeInteger(quantidadeInformada) && quantidadeInformada > 0 ? quantidadeInformada : 1;
+  const distribuicao = distribuirPerfis(quantidadeUsuarios, perfisIncluidos, ofertaEquipe);
+  const perfisExtras = ehTesteGratis ? 0 : distribuicao.extrasCobrados;
   const valorPerfilExtraMensal = Math.max(0, Number(texto.valor_perfil_extra_mensal) || 0);
   const adicionalMensal = perfisExtras * valorPerfilExtraMensal;
   const adicionalCiclo=adicionalMensal*mesesDoCiclo(ciclo);
@@ -428,7 +442,7 @@ function Contratar() {
   });
   const cotacaoPromo = useQuery({
     ...consultaPromocional(codigoSelecionado),
-    enabled: etapa === 3 && !!codigoSelecionado && valorTotal > 0,
+    enabled: etapa === 3 && !!codigoSelecionado && valorTotal > 0 && !cotacaoEquipePendente,
   });
   const promoAplicado = !cotacaoPromo.isFetching && !cotacaoPromo.isError ? cotacaoPromo.data : undefined;
   const aguardandoCupom = Boolean(codigoSelecionado && valorTotal > 0 && cotacaoPromo.isFetching);
@@ -438,8 +452,8 @@ function Contratar() {
   const cpfTemErro = cpfVerificado && !cpfValido(dados.responsavel_cpf);
 
   const explicacaoPerfis = String(texto.perfis_texto || TEXTO_PADRAO.perfis_texto)
-    .replaceAll("{incluidos}", String(perfisIncluidos))
-    .replaceAll("{perfil}", perfisIncluidos === 1 ? "perfil" : "perfis")
+    .replaceAll("{incluidos}", String(distribuicao.inclusosParaResumo))
+    .replaceAll("{perfil}", distribuicao.inclusosParaResumo === 1 ? "perfil" : "perfis")
     .replaceAll("{valor}", brl(valorPerfilExtraMensal));
 
   function removerCodigoPromocional() {
@@ -456,7 +470,7 @@ function Contratar() {
   }
 
   async function aplicarCodigoPromocional() {
-    if (validandoPromo || enviando || valorTotal <= 0) return;
+    if (validandoPromo || enviando || validandoOfertaEquipe || cotacaoEquipePendente || valorTotal <= 0) return;
     const codigo = codigoPromocional.trim().toUpperCase().replace(/\s+/g, "-");
     if (!codigo) {
       setErroPromo("Digite um código promocional para aplicar.");
@@ -518,10 +532,34 @@ function Contratar() {
   }
 
   async function continuarPagamento() {
-    if (enviando || validandoPromo || cupomSemCotacao) return;
+    if (enviando || guardandoPedido.current || validandoPromo || cupomSemCotacao || cotacaoEquipePendente || pedidoDivergente) return;
     if (!planoConhecido || (!ehTesteGratis && (!configPlano || valorBase <= 0))) { toast.error("Não foi possível validar o valor deste plano. Volte à página de planos."); return; }
     if (!termos || !privacidade) { toast.error("Aceite os Termos de Uso e a Política de Privacidade."); return; }
+    if (ofertaEquipe.tipo !== "padrao" && modoRenovacao === "automatica_cartao" &&
+      promoAplicado?.duracao === "primeiro_mes" && valorCobrado > 0 && valorCobrado < valorTotal) {
+      toast.error("Para combinar esta oferta com cupom de um ciclo, selecione renovação manual.");
+      return;
+    }
     if (plano === "master-2026" && !aceitouFidelidadeMaster) { toast.error("Confirme ciência da fidelidade de 12 meses do plano Master."); return; }
+    guardandoPedido.current = true;
+    const expectativaOferta = participaCampanha && campanhaPerfis.data?.ativa ? campanhaPerfis.data.id : null;
+    if (participaCampanha) {
+      setValidandoOfertaEquipe(true);
+      try {
+        const atualizada = await campanhaPerfis.refetch({ throwOnError: true });
+        if (!atualizada.data || atualizada.data.id !== expectativaOferta) {
+          toast.error("A oferta de perfis mudou. Revise a contratação antes de continuar.");
+          return;
+        }
+      } catch {
+        toast.error("Não foi possível confirmar a oferta de perfis. Nenhum pedido foi enviado.");
+        return;
+      } finally {
+        setValidandoOfertaEquipe(false);
+        guardandoPedido.current = false;
+      }
+    }
+    guardandoPedido.current = true;
     setEnviando(true);
     const payload = {
       ...dados,
@@ -534,7 +572,9 @@ function Contratar() {
       ciclo,
       modo_renovacao: modoRenovacao,
       quantidade_usuarios: quantidadeUsuarios,
-      perfis_inclusos: perfisIncluidos,
+      perfis_inclusos: distribuicao.inclusosParaResumo,
+      oferta_perfis_esperada: expectativaOferta,
+      ...(participaCampanha ? { oferta_perfis_total_esperado_centavos: Math.round(valorCobrado * 100) } : {}),
       perfis_extras: perfisExtras,
       adicional_perfis_mensal: adicionalMensal,
       adicional_perfis_ciclo: adicionalCiclo,
@@ -547,10 +587,30 @@ function Contratar() {
       aceitou_fidelidade_master: plano === "master-2026" ? aceitouFidelidadeMaster : null,
       fidelidade_aceita_em: plano === "master-2026" ? new Date().toISOString() : null,
     };
-    const { data, error } = await (supabaseBanco as any).rpc(ehTesteGratis ? "oricse_iniciar_teste_gratis" : "oricse_iniciar_contratacao", { p_dados: payload });
-    setEnviando(false);
-    if (error) { toast.error(error.message || (ehTesteGratis ? "Não foi possível iniciar o teste gratuito." : "Não foi possível iniciar a contratação.")); return; }
-    const novoPedido = Array.isArray(data) ? data[0] : data;
+    let novoPedido;
+    try {
+      const { data, error } = await (supabaseBanco as any).rpc(ehTesteGratis ? "oricse_iniciar_teste_gratis" : "oricse_iniciar_contratacao", { p_dados: payload });
+      if (error) throw error;
+      novoPedido = Array.isArray(data) ? data[0] : data;
+      if (!novoPedido?.id) throw new Error("O servidor não confirmou a contratação.");
+      if (participaCampanha) {
+        const valorServidor = Number(novoPedido.valor_total ?? (novoPedido.valor_exibido ? parseBRL(novoPedido.valor_exibido) : Number.NaN));
+        if (novoPedido.oferta_perfis_id !== expectativaOferta || !Number.isFinite(valorServidor) ||
+          Math.round(valorServidor * 100) !== Math.round(valorCobrado * 100)) {
+          setPedidoDivergente(true);
+          setErroValidacao("O pedido recebido diverge da oferta ou do total revisado. Nenhum pagamento foi aberto. Informe o código " + String(novoPedido.id).slice(0,8) + " ao atendimento da ORICSE.");
+          return;
+        }
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (error as { message?: string })?.message ||
+        (ehTesteGratis ? "Não foi possível iniciar o teste gratuito." : "Não foi possível iniciar a contratação."));
+      return;
+    } finally {
+      guardandoPedido.current = false;
+      setEnviando(false);
+    }
+    setOfertaConfirmadaNoPedido(ofertaEquipe.tipo === "ilimitado" ? "Ilimitados sem acréscimo" : "");
     setPedido(novoPedido);
     setEtapa(4);
     if (!ehTesteGratis && novoPedido?.id) {
@@ -635,7 +695,7 @@ function Contratar() {
 
 
     {etapa===3 && <section className="mt-5 rounded-3xl border bg-card p-5 shadow-sm sm:p-7">
-      <fieldset disabled={enviando} className="min-w-0">
+      <fieldset disabled={enviando || validandoOfertaEquipe || pedidoDivergente} className="min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Revisão do pedido</p><h2 className="mt-1 text-2xl font-bold">3. Revisão</h2><p className="mt-1 text-sm text-muted-foreground">Confira os dados da contratação, escolha o período e aplique seu código antes de pagar.</p></div>
         {!ehTesteGratis && <div className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm font-bold text-primary">Plano {nomePlano}</div>}
@@ -646,23 +706,51 @@ function Contratar() {
           <div className="rounded-2xl border bg-background p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3"><div><h3 className="font-bold">Período de cobrança</h3><p className="mt-1 text-sm text-muted-foreground">Selecione como prefere pagar.</p></div><CreditCard size={20} className="text-primary"/></div>
             <div role="radiogroup" aria-label="Período de cobrança" className="mt-4 grid gap-3">
-              {CICLOS.map((opcao)=>{const valor=parseBRL(precoDoCiclo(configPlano,opcao.codigo))+adicionalMensal*opcao.meses;return <button key={opcao.codigo} type="button" role="radio" aria-checked={ciclo===opcao.codigo} onClick={()=>trocarCiclo(opcao.codigo)} className={`w-full rounded-2xl border p-4 text-left transition ${ciclo===opcao.codigo?"border-primary bg-primary/5 ring-1 ring-primary":"hover:border-primary/40"}`}><div className="flex items-start justify-between gap-4"><div><p className="font-bold">{opcao.nome}</p><p className="mt-1 text-sm text-muted-foreground">{opcao.descricao}</p></div><div className="text-right"><p className="text-lg font-extrabold">{valor>0?brl(valor):"A configurar"}</p><p className="text-xs text-muted-foreground">por período</p></div></div></button>;})}
+              {CICLOS.map((opcao)=>{const valor=parseBRL(precoDoCiclo(configPlano,opcao.codigo))+adicionalMensal*opcao.meses;return <button key={opcao.codigo} type="button" role="radio" aria-checked={ciclo===opcao.codigo} onClick={()=>trocarCiclo(opcao.codigo)} className={`w-full rounded-2xl border p-4 text-left transition ${ciclo===opcao.codigo?"border-primary bg-primary/5 ring-1 ring-primary":"hover:border-primary/40"}`}><div className="flex items-start justify-between gap-4"><div><p className="font-bold">{opcao.nome}</p><p className="mt-1 text-sm text-muted-foreground">{opcao.descricao}</p></div><div className="text-right"><p className="text-lg font-extrabold">{cotacaoEquipePendente ? "—" : valor>0 ? brl(valor) : "A configurar"}</p><p className="text-xs text-muted-foreground">por período</p></div></div></button>;})}
             </div>
             <div className="mt-5 rounded-2xl border bg-muted/20 p-4"><h3 className="font-bold">Como renovar</h3><p className="mt-1 text-sm text-muted-foreground">No cartão, a renovação é automática. PIX e boleto são cobrados manualmente em cada período.</p><div className="mt-3 grid gap-2 sm:grid-cols-2"><button type="button" onClick={()=>setModoRenovacao("automatica_cartao")} className={`rounded-xl border p-3 text-left ${modoRenovacao==="automatica_cartao"?"border-primary bg-primary/5 ring-1 ring-primary":"bg-background"}`}><strong className="block">Cartão com renovação automática</strong><span className="mt-1 block text-xs text-muted-foreground">O Mercado Pago processa a renovação no vencimento.</span></button><button type="button" onClick={()=>setModoRenovacao("manual")} className={`rounded-xl border p-3 text-left ${modoRenovacao==="manual"?"border-primary bg-primary/5 ring-1 ring-primary":"bg-background"}`}><strong className="block">PIX ou boleto — renovação manual</strong><span className="mt-1 block text-xs text-muted-foreground">Um novo link de cobrança é emitido a cada período.</span></button></div></div>
 
-            <div className="mt-5 border-t pt-5">
-              <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-bold">{texto.perfis_titulo}</h3><p className="mt-1 max-w-md text-sm text-muted-foreground">{explicacaoPerfis}</p></div><div className="flex items-center gap-3"><button type="button" aria-label="Remover perfil" onClick={()=>mudarQuantidade(-1)} disabled={quantidadeUsuarios<=1} className="flex h-10 w-10 items-center justify-center rounded-xl border disabled:opacity-40"><Minus size={18}/></button><div className="min-w-14 text-center"><p className="text-2xl font-extrabold">{quantidadeUsuarios}</p><p className="text-xs text-muted-foreground">perfis</p></div><button type="button" aria-label="Adicionar perfil" onClick={()=>mudarQuantidade(1)} className="flex h-10 w-10 items-center justify-center rounded-xl border"><Plus size={18}/></button></div></div>
-              <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-muted/40 p-3 text-center text-sm"><div><p className="text-xs text-muted-foreground">{texto.perfis_incluidos_rotulo}</p><p className="mt-1 font-bold">{Math.min(quantidadeUsuarios, perfisIncluidos)}</p></div><div><p className="text-xs text-muted-foreground">{texto.perfis_extras_rotulo}</p><p className="mt-1 font-bold">{perfisExtras}</p></div><div><p className="text-xs text-muted-foreground">{texto.perfis_adicional_rotulo}</p><p className="mt-1 font-bold">{brl(adicionalCiclo)}</p></div></div>
-            </div>
+            <section className="mt-5 border-t pt-5" aria-labelledby="checkout-perfis-titulo">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 id="checkout-perfis-titulo" className="font-bold">{texto.perfis_titulo}</h3>
+                  {!cotacaoEquipePendente && ofertaEquipe.tipo !== "ilimitado" && (
+                    <p className="mt-1 max-w-md text-sm text-muted-foreground">{explicacaoPerfis}</p>
+                  )}
+                </div>
+                {!cotacaoEquipePendente && ofertaEquipe.tipo !== "ilimitado" && <div className="flex items-center gap-3">
+                  <button type="button" aria-label="Remover perfil" onClick={()=>mudarQuantidade(-1)} disabled={quantidadeUsuarios<=1 || validandoOfertaEquipe || enviando} className="flex h-10 w-10 items-center justify-center rounded-xl border disabled:opacity-40"><Minus size={18}/></button>
+                  <div className="min-w-14 text-center"><p className="text-2xl font-extrabold" aria-live="polite">{quantidadeUsuarios}</p><p className="text-xs text-muted-foreground">perfis</p></div>
+                  <button type="button" aria-label="Adicionar perfil" onClick={()=>mudarQuantidade(1)} disabled={validandoOfertaEquipe || enviando} className="flex h-10 w-10 items-center justify-center rounded-xl border disabled:opacity-40"><Plus size={18}/></button>
+                </div>}
+              </div>
+              {cotacaoEquipePendente ? (
+                <p className="mt-3 text-sm" role="status">
+                  {campanhaPerfis.isError ? "Não foi possível confirmar as condições dos perfis. " : "Consultando condições dos perfis…"}
+                  {campanhaPerfis.isError && <button className="font-bold text-primary underline" type="button" onClick={()=>void campanhaPerfis.refetch()}>Tentar novamente</button>}
+                </p>
+              ) : (
+                <>
+                  {ofertaEquipe.tipo !== "padrao" && <div className="mt-3"><BeneficioPromocionalPerfis oferta={ofertaEquipe}/></div>}
+                  {ofertaEquipe.tipo !== "ilimitado" && (
+                    <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-muted/40 p-3 text-center text-sm">
+                      <div><p className="text-xs text-muted-foreground">{texto.perfis_incluidos_rotulo}</p><p className="mt-1 font-bold">{distribuicao.baseSelecionados + distribuicao.extrasGratuitos}</p></div>
+                      <div><p className="text-xs text-muted-foreground">{ofertaEquipe.tipo === "extras_gratis" ? "Extras cobrados" : texto.perfis_extras_rotulo}</p><p className="mt-1 font-bold">{perfisExtras}</p></div>
+                      <div><p className="text-xs text-muted-foreground">{texto.perfis_adicional_rotulo}</p><p className="mt-1 font-bold">{brl(adicionalCiclo)}</p></div>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
           </div>
 
           <div className="flex h-full min-w-0 flex-col rounded-2xl border border-primary/25 bg-primary/[0.035] p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3"><div><h3 className="font-bold">Resumo do pagamento</h3><p className="mt-1 text-sm text-muted-foreground">O valor abaixo é o que seguirá para o Mercado Pago.</p></div><BadgeCheck size={21} className="text-primary"/></div>
-            <dl className="mt-5 space-y-3 text-sm"><div className="flex items-start justify-between gap-4"><dt className="text-muted-foreground">Plano {nomePlano}</dt><dd className="text-right font-semibold">{brl(valorBase)}</dd></div>{perfisExtras > 0 && <div className="flex items-start justify-between gap-4"><dt className="text-muted-foreground">Perfis adicionais</dt><dd className="text-right font-semibold">{brl(adicionalCiclo)}</dd></div>}<div className="flex items-start justify-between gap-4 border-t pt-3"><dt className="text-muted-foreground">Subtotal</dt><dd className="text-right font-semibold">{brl(valorTotal)}</dd></div>{promoAplicado && <div className="contents"><div className="flex items-start justify-between gap-4 text-emerald-700"><dt className="flex items-center gap-1.5"><TicketPercent size={16}/> Código {promoAplicado.codigo}</dt><dd className="font-bold">− {brl(descontoPromocional)}</dd></div><p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">{promoAplicado.duracao === "recorrente" ? "Desconto recorrente aplicado ao plano." : "Desconto válido apenas para o primeiro período de cobrança."}</p></div>}<div className="flex items-end justify-between gap-4 border-t pt-4"><dt><p className="font-bold">Total a pagar agora</p><p className="mt-1 text-xs text-muted-foreground">{cicloNome.toLowerCase() + " · " + (modoRenovacao === "automatica_cartao" ? "cartão com renovação automática" : "renovação manual")}</p></dt><dd className="text-right text-2xl font-extrabold text-primary">{aguardandoCupom ? "Calculando…" : cupomSemCotacao ? "—" : brl(valorCobrado)}</dd></div>{promoAplicado?.duracao === "primeiro_mes" && <div className="flex items-start justify-between gap-4 text-xs text-muted-foreground"><dt>Após a promoção</dt><dd>{brl(valorTotal)} por período</dd></div>}</dl>
+            <dl className="mt-5 space-y-3 text-sm"><div className="flex items-start justify-between gap-4"><dt className="text-muted-foreground">Plano {nomePlano}</dt><dd className="text-right font-semibold">{brl(valorBase)}</dd></div>{!cotacaoEquipePendente && perfisExtras > 0 && <div className="flex items-start justify-between gap-4"><dt className="text-muted-foreground">Perfis adicionais</dt><dd className="text-right font-semibold">{brl(adicionalCiclo)}</dd></div>}<div className="flex items-start justify-between gap-4 border-t pt-3"><dt className="text-muted-foreground">Subtotal</dt><dd className="text-right font-semibold">{cotacaoEquipePendente ? "—" : brl(valorTotal)}</dd></div>{promoAplicado && <div className="contents"><div className="flex items-start justify-between gap-4 text-emerald-700"><dt className="flex items-center gap-1.5"><TicketPercent size={16}/> Código {promoAplicado.codigo}</dt><dd className="font-bold">− {brl(descontoPromocional)}</dd></div><p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">{promoAplicado.duracao === "recorrente" ? "Desconto recorrente aplicado ao plano." : "Desconto válido apenas para o primeiro período de cobrança."}</p></div>}<div className="flex items-end justify-between gap-4 border-t pt-4"><dt><p className="font-bold">Total a pagar agora</p><p className="mt-1 text-xs text-muted-foreground">{cicloNome.toLowerCase() + " · " + (modoRenovacao === "automatica_cartao" ? "cartão com renovação automática" : "renovação manual")}</p></dt><dd className="text-right text-2xl font-extrabold text-primary">{validandoOfertaEquipe ? "Confirmando…" : cotacaoEquipePendente ? "—" : aguardandoCupom ? "Calculando…" : cupomSemCotacao ? "—" : brl(valorCobrado)}</dd></div>{promoAplicado?.duracao === "primeiro_mes" && <div className="flex items-start justify-between gap-4 text-xs text-muted-foreground"><dt>Após o primeiro período com cupom</dt><dd>{brl(valorTotal)} por período</dd></div>}</dl>
             <div className="mt-5 grid gap-2 rounded-xl border bg-background/70 p-3 text-xs text-muted-foreground sm:grid-cols-2"><p><span className="font-semibold text-foreground">Clínica:</span> {dados.clinica_nome || "Dados informados na etapa 1"}</p><p><span className="font-semibold text-foreground">Responsável:</span> {dados.responsavel_nome || "Dados informados na etapa 2"}</p></div>
             <div id="oricse-promo-checkout" className="mt-5 flex-1 rounded-2xl border border-dashed border-primary/40 bg-primary/[0.025] p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><TicketPercent size={19} className="text-primary"/><h3 className="font-bold">Código promocional</h3></div><p className="mt-1 text-sm text-muted-foreground">Tem um cupom? Aplique-o antes de seguir para o pagamento.</p></div>{codigoSelecionado && <button type="button" disabled={validandoPromo} onClick={removerCodigoPromocional} className="text-sm font-bold text-primary underline underline-offset-4">Remover código</button>}</div>
-          <div className="mt-4 flex flex-col gap-2"><input aria-label="Código promocional" disabled={validandoPromo} value={codigoPromocional} onChange={e=>{setCodigoPromocional(e.target.value.toUpperCase());setErroPromo("");}} onKeyDown={e=>{if(e.key === "Enter"){e.preventDefault();void aplicarCodigoPromocional();}}} placeholder="DIGITE SEU CÓDIGO" className="min-h-12 flex-1 rounded-xl border bg-background px-4 font-bold tracking-wide uppercase outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"/><button type="button" onClick={()=>void aplicarCodigoPromocional()} disabled={validandoPromo || valorTotal <= 0} className="min-h-12 rounded-xl bg-primary px-5 font-bold text-primary-foreground disabled:opacity-60">{validandoPromo ? "Validando..." : codigoSelecionado ? "Atualizar código" : "Aplicar código"}</button></div>
+          <div className="mt-4 flex flex-col gap-2"><input aria-label="Código promocional" disabled={validandoPromo} value={codigoPromocional} onChange={e=>{setCodigoPromocional(e.target.value.toUpperCase());setErroPromo("");}} onKeyDown={e=>{if(e.key === "Enter"){e.preventDefault();void aplicarCodigoPromocional();}}} placeholder="DIGITE SEU CÓDIGO" className="min-h-12 flex-1 rounded-xl border bg-background px-4 font-bold tracking-wide uppercase outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"/><button type="button" onClick={()=>void aplicarCodigoPromocional()} disabled={validandoPromo || cotacaoEquipePendente || validandoOfertaEquipe || valorTotal <= 0} className="min-h-12 rounded-xl bg-primary px-5 font-bold text-primary-foreground disabled:opacity-60">{validandoPromo ? "Validando..." : codigoSelecionado ? "Atualizar código" : "Aplicar código"}</button></div>
           {(erroPromo || cotacaoPromo.error) && <p role="alert" className="mt-3 text-sm font-semibold text-destructive">{erroPromo || cotacaoPromo.error?.message}</p>}
           {cupomSemCotacao && <p role="status" className="mt-3 text-sm font-semibold">{aguardandoCupom ? `Recalculando o desconto do código ${codigoSelecionado}…` : `Código ${codigoSelecionado} mantido na contratação.`}</p>}
           {promoAplicado && <p className="mt-3 flex items-center gap-2 text-sm font-bold text-emerald-700"><BadgeCheck size={17}/> Código {promoAplicado.codigo} aplicado: você economiza {brl(descontoPromocional)}.</p>}
@@ -693,7 +781,7 @@ function Contratar() {
       </fieldset>
     </section>}
 
-    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : "4. Pagamento"}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><p><b>Perfis:</b> {quantidadeUsuarios}</p>{!ehTesteGratis&&<p><b>Total:</b> {brl(valorDoPedido)} por período</p>}{!ehTesteGratis&&(pedido?.promo_desconto>0||promoAplicado)&&<p className="text-emerald-700"><b>{codigoSelecionado ? `Código ${codigoSelecionado}:` : "Desconto:"}</b> − {brl(Number(pedido?.promo_desconto??descontoPromocional))}</p>}<p><b>Status:</b> {ehTesteGratis?"aguardando ativação":pedidoIsento?"aguardando aprovação administrativa":"aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis&&!pedidoIsento&&<button type="button" disabled={abrindoCheckout||!pedido?.id} onClick={()=>void abrirCheckout(String(pedido.id))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout?"Processando…":"Pagar com Mercado Pago"}</button>}{pedidoIsento&&pedido?.id&&<a href={`/contratacao-recebida?retorno=isento&pedido=${encodeURIComponent(String(pedido.id))}`} className="mt-4 block w-full rounded-xl border border-primary px-4 py-3 text-center font-semibold text-primary">Ver solicitação recebida</a>}</div>{!ehTesteGratis&&<p className="mt-5 text-sm text-muted-foreground">{pedidoIsento?"O cupom cobre 100% do período. Não haverá cobrança; a clínica seguirá para aprovação e ativação administrativa.":"O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação."}</p>}</section>}
+    {etapa===4 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">{ehTesteGratis ? <Check className="mx-auto text-primary" size={42}/> : <CreditCard className="mx-auto text-primary" size={42}/>}<h2 className="mt-3 text-2xl font-bold">{ehTesteGratis ? "Seu teste gratuito foi solicitado 💚" : "4. Pagamento"}</h2><p className="mx-auto mt-2 max-w-xl text-muted-foreground">{ehTesteGratis ? "Seu CPF/CNPJ ficou vinculado a este único período de teste. Assim que a conta for ativada, os 7 dias começam a contar." : texto.etapa4_texto}</p><div className="mx-auto mt-5 max-w-md rounded-2xl border p-4 text-left text-sm"><p><b>Plano:</b> {nomePlano}</p><p><b>Período:</b> {ehTesteGratis ? "7 dias grátis" : cicloNome}</p><p><b>Perfis:</b> {ofertaConfirmadaNoPedido || quantidadeUsuarios}</p>{!ehTesteGratis&&<p><b>Total:</b> {brl(valorDoPedido)} por período</p>}{!ehTesteGratis&&(pedido?.promo_desconto>0||promoAplicado)&&<p className="text-emerald-700"><b>{codigoSelecionado ? `Código ${codigoSelecionado}:` : "Desconto:"}</b> − {brl(Number(pedido?.promo_desconto??descontoPromocional))}</p>}<p><b>Status:</b> {ehTesteGratis?"aguardando ativação":pedidoIsento?"aguardando aprovação administrativa":"aguardando pagamento"}</p>{pedido?.id && <p className="mt-2 text-xs text-muted-foreground">Pedido {String(pedido.id).slice(0,8)}</p>}{!ehTesteGratis&&!pedidoIsento&&<button type="button" disabled={abrindoCheckout||!pedido?.id} onClick={()=>void abrirCheckout(String(pedido.id))} className="mt-4 w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">{abrindoCheckout?"Processando…":"Pagar com Mercado Pago"}</button>}{pedidoIsento&&pedido?.id&&<a href={`/contratacao-recebida?retorno=isento&pedido=${encodeURIComponent(String(pedido.id))}`} className="mt-4 block w-full rounded-xl border border-primary px-4 py-3 text-center font-semibold text-primary">Ver solicitação recebida</a>}</div>{!ehTesteGratis&&<p className="mt-5 text-sm text-muted-foreground">{pedidoIsento?"O cupom cobre 100% do período. Não haverá cobrança; a clínica seguirá para aprovação e ativação administrativa.":"O pagamento será confirmado automaticamente pelo Mercado Pago. O pedido só será liberado após a confirmação."}</p>}</section>}
 
     {etapa===5 && <section className="mt-5 rounded-3xl border bg-card p-7 text-center shadow-sm">
       <Check className="mx-auto text-primary" size={42}/>
@@ -704,9 +792,9 @@ function Contratar() {
 
     {etapa<4 && erroValidacao && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm font-semibold text-destructive">{erroValidacao}</p>}
     {etapa<=3 && <div className="mt-5 flex items-center justify-between gap-3">
-      {etapa>1?<button type="button" disabled={enviando || validandoPromo} onClick={()=>{setErroValidacao("");setEtapa(etapa-1);}} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold"><ChevronLeft size={18}/> Voltar</button>:<span/>}
+      {etapa>1?<button type="button" disabled={enviando || validandoPromo || validandoOfertaEquipe || pedidoDivergente} onClick={()=>{setErroValidacao("");setEtapa(etapa-1);}} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 font-semibold"><ChevronLeft size={18}/> Voltar</button>:<span/>}
       {etapa<3?<button type="button" onClick={()=>void avancarEtapa()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-50">Continuar <ChevronRight size={18}/></button>
-      :<button type="button" disabled={enviando || validandoPromo || cupomSemCotacao} onClick={()=>void continuarPagamento()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><Check size={18}/>{enviando?"Enviando...":valorCobrado===0?"Enviar para aprovação":"Ir para pagamento"}</button>}
+      :<button type="button" disabled={enviando || validandoPromo || validandoOfertaEquipe || cupomSemCotacao || cotacaoEquipePendente || pedidoDivergente} onClick={()=>void continuarPagamento()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-60"><Check size={18}/>{validandoOfertaEquipe?"Confirmando condições…":enviando?"Enviando...":valorCobrado===0?"Enviar para aprovação":"Ir para pagamento"}</button>}
     </div>}
   </div></main>;
 }
